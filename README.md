@@ -30,3 +30,15 @@ docker compose exec backend alembic revision --autogenerate -m "…" # nueva mig
 docker compose down                                                # parar (conserva datos)
 docker compose down -v                                             # parar y BORRAR datos
 ```
+
+## Entorno local para el editor (opcional)
+
+Todo se ejecuta en Docker. El venv solo sirve para que el editor reconozca las librerías (autocompletado, sin imports en rojo).
+
+```bash
+py -3.12 -m venv backend/.venv
+backend/.venv/Scripts/python -m pip install -r backend/requirements-dev.txt
+```
+
+En VS Code: `Ctrl+Shift+P` → "Python: Select Interpreter" → `backend\.venv\Scripts\python.exe`.
+Para activarlo a mano: `backend\.venv\Scripts\activate` (salir con `deactivate`).
