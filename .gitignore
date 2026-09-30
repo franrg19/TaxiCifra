@@ -1,0 +1,16 @@
+# Secretos
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Imágenes subidas en local
+uploads/
+
+# Frontend
+node_modules/
+dist/
