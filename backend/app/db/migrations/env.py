@@ -2,6 +2,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
+import app.models  # noqa: F401  (registra los modelos en Base.metadata)
 from app.db.database import Base, engine
 
 config = context.config
