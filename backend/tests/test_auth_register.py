@@ -46,11 +46,23 @@ def test_register_rejects_invalid_email(client: TestClient) -> None:
     response = client.post(REGISTER_URL, json={**VALID_USER, "email": "no-es-un-email"})
 
     assert response.status_code == 422
-    assert response.json() == {"detail": "Datos no válidos en: email", "code": "validation_error"}
+    assert response.json() == {"detail": "email: valor no válido", "code": "validation_error"}
 
 
 def test_register_rejects_short_password(client: TestClient) -> None:
     response = client.post(REGISTER_URL, json={**VALID_USER, "password": "corta"})
 
     assert response.status_code == 422
-    assert response.json()["code"] == "validation_error"
+    assert response.json() == {
+        "detail": "password: debe tener al menos 8 caracteres",
+        "code": "validation_error",
+    }
+
+
+def test_register_rejects_missing_name(client: TestClient) -> None:
+    user_without_name = {"email": "ana@example.com", "password": "secreto123"}
+
+    response = client.post(REGISTER_URL, json=user_without_name)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "name: es obligatorio", "code": "validation_error"}
