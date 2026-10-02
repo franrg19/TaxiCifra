@@ -8,6 +8,8 @@ class Settings(BaseSettings):
 
     database_url: str
     images_dir: str = "uploads"
+    jwt_secret: str
+    jwt_expire_hours: int = 24
 
 
 settings = Settings()

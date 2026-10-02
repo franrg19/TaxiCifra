@@ -11,7 +11,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 ## Arrancar en local
 
 ```bash
-cp .env.example .env        # y cambia la contraseña de PostgreSQL
+cp .env.example .env        # y cambia la contraseña de PostgreSQL y JWT_SECRET
 docker compose up --build
 ```
 
