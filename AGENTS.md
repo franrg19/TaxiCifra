@@ -1,4 +1,4 @@
-# AGENTS.md — TaxiGest
+# AGENTS.md — Taxicifra
 
 Fuente de verdad ÚNICA del proyecto. Cualquier IA (Claude Code u otra) que trabaje en este repositorio debe leerlo ENTERO antes de tocar código y ceñirse a él.
 
@@ -15,7 +15,7 @@ Fuente de verdad ÚNICA del proyecto. Cualquier IA (Claude Code u otra) que trab
 
 ## 1. Proyecto
 
-**TaxiGest** es una aplicación web para que un taxista autónomo controle la economía de su negocio: registra gastos fotografiando tickets (OCR/IA), registra ingresos y kilometraje, y ve en un dashboard su beneficio estimado y su coste por kilómetro.
+**Taxicifra** es una aplicación web para que un taxista autónomo controle la economía de su negocio: registra gastos fotografiando tickets (OCR/IA), registra ingresos y kilometraje, y ve en un dashboard su beneficio estimado y su coste por kilómetro.
 
 - Es el **Proyecto Intermodular de DAM**. El proyecto debe estar **prácticamente finalizado el 20 de noviembre de 2026**, el **depósito final es el 7 de diciembre de 2026** y la **defensa es la semana del 14 de diciembre de 2026**. Desarrollador único: Fran.
 - **Regla de diseño clave:** los datos extraídos por OCR/IA NUNCA son definitivos hasta que el usuario los revisa y confirma.

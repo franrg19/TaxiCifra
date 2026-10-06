@@ -1,4 +1,4 @@
-# TaxiGest
+# Taxicifra
 
 Aplicación web para que un taxista autónomo controle la economía de su negocio: gastos (tickets con OCR/IA), ingresos, kilometraje y dashboard de beneficio y coste por kilómetro.
 
