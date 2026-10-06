@@ -47,18 +47,18 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 ## 4. Stack (CERRADO, no cambiar sin aprobación de Fran)
 
-| Capa | Tecnología |
-|---|---|
-| Backend | Python + FastAPI |
-| ORM | SQLAlchemy, **modo síncrono** |
-| Base de datos | PostgreSQL |
-| Migraciones | Alembic |
-| Autenticación | JWT + hash de contraseña con argon2 |
-| Validación y configuración | Pydantic + pydantic-settings |
-| Frontend | React + TypeScript + Tailwind CSS |
-| Tests | pytest (backend), Vitest (frontend, pocos) |
-| Contenedores | Docker + Docker Compose |
-| CI | GitHub Actions |
+| Capa                       | Tecnología                                 |
+| -------------------------- | ------------------------------------------ |
+| Backend                    | Python + FastAPI                           |
+| ORM                        | SQLAlchemy, **modo síncrono**              |
+| Base de datos              | PostgreSQL                                 |
+| Migraciones                | Alembic                                    |
+| Autenticación              | JWT + hash de contraseña con argon2        |
+| Validación y configuración | Pydantic + pydantic-settings               |
+| Frontend                   | React + TypeScript + Tailwind CSS          |
+| Tests                      | pytest (backend), Vitest (frontend, pocos) |
+| Contenedores               | Docker + Docker Compose                    |
+| CI                         | GitHub Actions                             |
 
 **Por qué Python/FastAPI** (para la memoria): productividad (Swagger automático, validación con Pydantic) y ecosistema de IA/OCR más maduro.
 
@@ -291,18 +291,18 @@ def get_ticket_or_404(db: Session, ticket_id: int, user_id: int) -> Ticket:
 
 ## 14. Plan y prioridades
 
-| Semana | Objetivo |
-|---|---|
-| 1 | Requisitos, historias de usuario, E-R, contrato API, repo con Docker Compose |
-| 2 | Auth (registro, login, JWT) y vehículos |
-| 3 | CRUD de tickets, autorización, filtros y paginación; elegir proveedor OCR |
-| 4 | Subida de imagen, OCR, estados y confirmación |
-| 5 | Ingresos, kilometraje y endpoints del dashboard |
-| 6 | Frontend: login, vehículos, tickets |
-| 7 | Frontend: subida y revisión, ingresos, kilometraje |
-| 8 | Frontend: dashboard y prueba completa → **MVP cerrado el 20/11** |
-| 9 y margen | CI (GitHub Actions), tests de frontend, pulido, memoria y README. **Depósito final: 07/12** |
-| 08/12–13/12 | Ensayo de la defensa y preparación de la demo. **Defensa: semana del 14/12** |
+| Semana      | Objetivo                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| 1           | Requisitos (RFTP) y casos de uso, E-R, contrato API, repo con Docker Compose                |
+| 2           | Auth (registro, login, JWT) y vehículos                                                     |
+| 3           | CRUD de tickets, autorización, filtros y paginación; elegir proveedor OCR                   |
+| 4           | Subida de imagen, OCR, estados y confirmación                                               |
+| 5           | Ingresos, kilometraje y endpoints del dashboard                                             |
+| 6           | Frontend: login, vehículos, tickets                                                         |
+| 7           | Frontend: subida y revisión, ingresos, kilometraje                                          |
+| 8           | Frontend: dashboard y prueba completa → **MVP cerrado el 20/11**                            |
+| 9 y margen  | CI (GitHub Actions), tests de frontend, pulido, memoria y README. **Depósito final: 07/12** |
+| 08/12–13/12 | Ensayo de la defensa y preparación de la demo. **Defensa: semana del 14/12**                |
 
 **Orden de recorte si el tiempo aprieta:** tests de frontend → CI/CD → coste por km y kilometraje → asociación a vehículo de tickets e ingresos → evolución mensual. **El flujo OCR NUNCA se recorta.**
 
@@ -312,26 +312,26 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 
 ### Cerradas (Fran las ha decidido; NO las cambies)
 
-| Tema | Decisión |
-|---|---|
-| Algoritmo de hash | argon2 |
-| Caducidad del JWT | 24 horas, sin refresh token |
-| Borrado de vehículo con datos asociados | `409`, salvo `?force=true` (ver sección 7) |
-| Km recorridos sin filtro y con varios vehículos | Sumar los km de cada vehículo |
-| Paginación | `size` por defecto 20, máximo 100 |
-| Tolerancia de `net + vat ≈ total` | 0,02 € |
-| Versión de Python | 3.12 |
-| Proveedor OCR/IA real | Se decide en la semana 3. Hasta entonces NO integrar ninguno: usar `FakeOcrProvider` |
+| Tema                                            | Decisión                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Algoritmo de hash                               | argon2                                                                               |
+| Caducidad del JWT                               | 24 horas, sin refresh token                                                          |
+| Borrado de vehículo con datos asociados         | `409`, salvo `?force=true` (ver sección 7)                                           |
+| Km recorridos sin filtro y con varios vehículos | Sumar los km de cada vehículo                                                        |
+| Paginación                                      | `size` por defecto 20, máximo 100                                                    |
+| Tolerancia de `net + vat ≈ total`               | 0,02 €                                                                               |
+| Versión de Python                               | 3.12                                                                                 |
+| Proveedor OCR/IA real                           | Se decide en la semana 3. Hasta entonces NO integrar ninguno: usar `FakeOcrProvider` |
 
 ### Abiertas
 
 Son de semanas posteriores y no bloquean nada ahora. Hasta que Fran las cierre, usa la **propuesta** indicada, dilo explícitamente y déjala fácil de cambiar.
 
-| Tema | Propuesta por defecto |
-|---|---|
-| Linter y formateo | ruff (backend), ESLint + Prettier (frontend) |
-| Librería de gráficos del dashboard | Recharts |
-| Estructura del frontend | La provisional de la sección 5 |
+| Tema                               | Propuesta por defecto                        |
+| ---------------------------------- | -------------------------------------------- |
+| Linter y formateo                  | ruff (backend), ESLint + Prettier (frontend) |
+| Librería de gráficos del dashboard | Recharts                                     |
+| Estructura del frontend            | La provisional de la sección 5               |
 
 ## 16. Prohibido
 
@@ -347,8 +347,8 @@ Son de semanas posteriores y no bloquean nada ahora. Hasta que Fran las cierre, 
 
 ## 17. Estado del proyecto (Fran lo actualiza)
 
-- [ ] Semana 1: requisitos, historias de usuario, E-R, contrato API, repo base
-- [ ] Semana 2: auth y vehículos
+- [x] Semana 1: requisitos (RFTP) y casos de uso, E-R, contrato API, repo base
+- [x] Semana 2: auth y vehículos
 - [ ] Semana 3: tickets CRUD + elegir proveedor OCR
 - [ ] Semana 4: subida, OCR y confirmación
 - [ ] Semana 5: ingresos, kilometraje y dashboard (backend)

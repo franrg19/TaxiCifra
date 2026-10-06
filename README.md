@@ -4,6 +4,35 @@ Aplicación web para que un taxista autónomo controle la economía de su negoci
 
 Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](AGENTS.md).
 
+## Tecnologías
+
+- **Backend:** Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16
+- **Seguridad:** contraseñas con argon2 y autenticación con JWT
+- **Frontend (pendiente):** React, TypeScript y Tailwind CSS
+- **Entorno:** Docker Compose, pytest y ruff
+
+## Estado actual
+
+| Módulo | Backend | Frontend |
+| --- | --- | --- |
+| Autenticación (registro y login) | Hecho | Pendiente |
+| Vehículos | Hecho | Pendiente |
+| Tickets y OCR | Pendiente | Pendiente |
+| Ingresos | Pendiente | Pendiente |
+| Kilometraje | Pendiente | Pendiente |
+| Dashboard | Pendiente | Pendiente |
+
+Endpoints disponibles (prefijo `/api/v1`):
+
+| Método | Ruta | Descripción | Requiere token |
+| --- | --- | --- | --- |
+| POST | `/auth/register` | Registrar un usuario | No |
+| POST | `/auth/login` | Iniciar sesión y obtener el token JWT | No |
+| GET | `/vehicles` | Listar los vehículos del usuario | Sí |
+| POST | `/vehicles` | Dar de alta un vehículo | Sí |
+| PUT | `/vehicles/{id}` | Editar un vehículo | Sí |
+| DELETE | `/vehicles/{id}` | Eliminar un vehículo | Sí |
+
 ## Requisitos
 
 - Docker y Docker Compose
@@ -19,6 +48,36 @@ docker compose up --build
 - Documentación Swagger: http://localhost:8000/docs
 
 Al arrancar, el backend aplica automáticamente las migraciones pendientes (`alembic upgrade head`).
+
+## Probar la API desde Swagger
+
+1. Abre http://localhost:8000/docs.
+2. Crea un usuario con `POST /api/v1/auth/register` (la contraseña necesita al menos 8 caracteres).
+3. Inicia sesión con `POST /api/v1/auth/login` y copia el `access_token` de la respuesta.
+4. Pulsa **Authorize**, pega el token y confirma. A partir de ahí puedes usar los endpoints protegidos.
+
+## Tests
+
+```bash
+docker compose exec backend pytest
+```
+
+Los tests se ejecutan dentro del contenedor contra una base de datos PostgreSQL aparte (`<POSTGRES_DB>_test`), que se crea automáticamente. Cada test se deshace al terminar, así que no dejan datos ni tocan la base de datos de desarrollo.
+
+## Estructura del backend
+
+```text
+backend/
+├── app/
+│   ├── main.py        # aplicación FastAPI y manejo uniforme de errores
+│   ├── core/          # configuración, seguridad (hash y JWT) y errores
+│   ├── api/           # rutas (sin lógica de negocio) y dependencias
+│   ├── schemas/       # validación de entrada y salida (Pydantic)
+│   ├── services/      # lógica de negocio y acceso a datos
+│   ├── models/        # entidades SQLAlchemy
+│   └── db/            # conexión y migraciones de Alembic
+└── tests/
+```
 
 ## Comandos útiles
 
