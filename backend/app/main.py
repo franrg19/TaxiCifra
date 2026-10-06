@@ -14,7 +14,7 @@ VALIDATION_MESSAGES = {
     "string_too_long": "debe tener como máximo {max_length} caracteres",
 }
 
-app = FastAPI(title="TaxiGest API")
+app = FastAPI(title="Taxicifra API")
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(vehicles.router, prefix="/api/v1")

@@ -1,4 +1,4 @@
-# AGENTS.md — TaxiGest
+# AGENTS.md — Taxicifra
 
 Fuente de verdad ÚNICA del proyecto. Cualquier IA (Claude Code u otra) que trabaje en este repositorio debe leerlo ENTERO antes de tocar código y ceñirse a él.
 
@@ -15,7 +15,7 @@ Fuente de verdad ÚNICA del proyecto. Cualquier IA (Claude Code u otra) que trab
 
 ## 1. Proyecto
 
-**TaxiGest** es una aplicación web para que un taxista autónomo controle la economía de su negocio: registra gastos fotografiando tickets (OCR/IA), registra ingresos y kilometraje, y ve en un dashboard su beneficio estimado y su coste por kilómetro.
+**Taxicifra** es una aplicación web para que un taxista autónomo controle la economía de su negocio: registra gastos fotografiando tickets (OCR/IA), registra ingresos y kilometraje, y ve en un dashboard su beneficio estimado y su coste por kilómetro.
 
 - Es el **Proyecto Intermodular de DAM**. El proyecto debe estar **prácticamente finalizado el 20 de noviembre de 2026**, el **depósito final es el 7 de diciembre de 2026** y la **defensa es la semana del 14 de diciembre de 2026**. Desarrollador único: Fran.
 - **Regla de diseño clave:** los datos extraídos por OCR/IA NUNCA son definitivos hasta que el usuario los revisa y confirma.
@@ -26,7 +26,8 @@ Fuente de verdad ÚNICA del proyecto. Cualquier IA (Claude Code u otra) que trab
 - **Pasos pequeños y modulares.** Una tarea o un módulo cada vez. Antes de tocar varios ficheros, lista cuáles vas a tocar y por qué.
 - **Al terminar cada paso:** resume en 2-3 líneas qué hiciste, cómo ejecutarlo o probarlo, y PREGUNTA si continúas con el siguiente. No encadenes varios pasos sin confirmación.
 - **Ejemplos de código concretos**, no descripciones vagas.
-- **Explica el porqué de forma breve.** Fran es junior y viene de Java/Spring Boot: cuando ayude, compara (Router ≈ Controller, Service ≈ Service, `Depends` ≈ inyección de dependencias, SQLAlchemy ≈ JPA/Hibernate, Alembic ≈ Flyway/Liquibase).
+- **Explica el porqué de forma breve.** Fran es junior: tras escribir código, explica qué hace cada fichero. Sin comparaciones con Java/Spring.
+- **Git lo maneja Fran.** No hagas commits, push ni merges: deja los cambios sin commitear y propón el mensaje y los comandos. Se trabaja con una rama por módulo o tarea (`feature/...`, `fix/...`, `docs/...`) y Pull Request hacia `main`.
 - **Todo cambio de comportamiento lleva su test** (sección 12).
 - Si Fran te pide algo que rompe una regla de este documento, díselo con claridad y propón la alternativa que sí encaja.
 
@@ -64,6 +65,8 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **NO uses:** SQLAlchemy async, Django, Flask, ORMs alternativos, librerías de estado global pesadas en el frontend, ni ninguna dependencia que no esté aquí sin preguntar antes.
 
+**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
+
 ## 5. Arquitectura
 
 Cliente-servidor con API REST. **Monolito modular.**
@@ -82,6 +85,7 @@ backend/app/
 ├── main.py
 ├── core/
 │   ├── config.py          # pydantic-settings
+│   ├── errors.py          # ApiError (error de negocio con code)
 │   └── security.py        # hash de contraseñas y JWT
 ├── api/
 │   ├── deps.py            # get_db, get_current_user
@@ -264,14 +268,14 @@ class OcrProvider(Protocol):
 - **Identificadores en inglés** (variables, funciones, clases, tablas, campos, endpoints). **Comentarios, docstrings y textos de interfaz en español.**
 - Tipado en todo el backend (type hints) y TypeScript estricto en el frontend. Sin `any` salvo justificación.
 - Funciones cortas, un propósito. Nada de código muerto ni comentado.
-- Errores de negocio con `HTTPException` y el formato de error de la sección 8.
+- Errores de negocio con `ApiError` (subclase de `HTTPException` definida en `core/errors.py`, con `status_code`, `detail` y `code`). Los manejadores de `main.py` devuelven TODOS los errores con el formato de la sección 8, también los de validación (422, con `detail` del tipo `campo: motivo`).
 - Ejemplo de comprobación de propiedad (el patrón a seguir):
 
 ```python
 def get_ticket_or_404(db: Session, ticket_id: int, user_id: int) -> Ticket:
     ticket = db.get(Ticket, ticket_id)
     if not ticket or ticket.user_id != user_id:
-        raise HTTPException(status_code=404, detail="Ticket no encontrado", ...)
+        raise ApiError(status_code=404, detail="Ticket no encontrado", code="ticket_not_found")
     return ticket
 ```
 
@@ -322,6 +326,24 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Tolerancia de `net + vat ≈ total`               | 0,02 €                                                                               |
 | Versión de Python                               | 3.12                                                                                 |
 | Proveedor OCR/IA real                           | Se decide en la semana 3. Hasta entonces NO integrar ninguno: usar `FakeOcrProvider` |
+
+### Tomadas durante el desarrollo (aprobadas por Fran; NO las cambies)
+
+| Tema | Decisión |
+| --- | --- |
+| Contraseña | Mínimo 8 caracteres (máximo 128) |
+| Email | Se guarda en minúsculas; el registro y el login no distinguen mayúsculas |
+| Matrícula | Se guarda en mayúsculas y sin espacios ni guiones (`1234 abc` = `1234ABC`). Máximo 15 caracteres; marca y modelo, 50 |
+| JWT | Algoritmo HS256. El token lleva `sub` (id de usuario) y `exp`. Clave en la variable `JWT_SECRET` (obligatoria, sin valor por defecto) |
+| Login | Entrada JSON (`email`, `password`); salida `{"access_token", "token_type": "bearer"}`. Email inexistente y contraseña incorrecta devuelven el mismo `401` (`invalid_credentials`) |
+| Códigos de respuesta | `201` altas · `204` borrados · `401` sin token válido (`not_authenticated`) · `404` recurso inexistente o ajeno · `409` duplicados (`email_already_registered`, `plate_already_registered`) · `422` validación (`validation_error`) |
+| `GET /vehicles` | Sin paginación (devuelve todos los vehículos del usuario) |
+| Borrado de vehículo | Se implementa por partes: versión básica en la semana 2 (`204`/`404`, sin `force`); el `409` y `?force=true` se añaden al crear tickets (semana 3) e ingresos y lecturas (semana 5) |
+| Tests del backend | Se ejecutan en Docker contra una base de datos aparte (`<nombre>_test`), creada automáticamente; cada test se deshace con un rollback |
+| Endpoint `/auth/me` | No existe. Se decidirá en la semana 6 si el frontend lo necesita |
+| Memoria | Sigue la plantilla del centro: RFTP y casos de uso (no historias de usuario). El contrato de la API no se incluye en la memoria (lo documenta Swagger) |
+| Planificación | Inicio de auth (tabla `users` y registro) adelantado a la semana 1 a petición de Fran |
+| Nombre del proyecto | **Taxicifra** (antes TaxiGest; cambiado el 06/10/2026 porque ya existe una app con ese nombre para el mismo público). Solo cambia el nombre visible: la carpeta, la base de datos, el usuario de PostgreSQL y los nombres de Docker siguen siendo `taxigest` |
 
 ### Abiertas
 
