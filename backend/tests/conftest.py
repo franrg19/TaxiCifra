@@ -52,3 +52,23 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_db] = lambda: db
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+def _register_and_login(client: TestClient, name: str, email: str) -> dict[str, str]:
+    """Registra un usuario, inicia sesión y devuelve la cabecera Authorization."""
+    credentials = {"email": email, "password": "secreto123"}
+    client.post("/api/v1/auth/register", json={"name": name, **credentials})
+    token = client.post("/api/v1/auth/login", json=credentials).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers(client: TestClient) -> dict[str, str]:
+    """Cabecera de autenticación de un usuario registrado."""
+    return _register_and_login(client, "Ana", "ana@example.com")
+
+
+@pytest.fixture
+def other_auth_headers(client: TestClient) -> dict[str, str]:
+    """Cabecera de autenticación de un segundo usuario, para probar la autorización."""
+    return _register_and_login(client, "Berto", "berto@example.com")

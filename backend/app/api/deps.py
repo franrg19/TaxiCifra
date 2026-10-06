@@ -29,3 +29,8 @@ def get_current_user(
     if user is None:
         raise ApiError(status_code=401, detail="No autenticado", code="not_authenticated")
     return user
+
+
+# Alias para declarar las dependencias en las rutas sin repetir Annotated
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
