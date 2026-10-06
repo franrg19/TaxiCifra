@@ -28,3 +28,9 @@ def update_vehicle(
 ) -> Vehicle:
     """Edita un vehículo del usuario autenticado."""
     return vehicle_service.update_vehicle(db, user.id, vehicle_id, data)
+
+
+@router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_vehicle(vehicle_id: int, user: CurrentUser, db: DbSession) -> None:
+    """Elimina un vehículo del usuario autenticado."""
+    vehicle_service.delete_vehicle(db, user.id, vehicle_id)

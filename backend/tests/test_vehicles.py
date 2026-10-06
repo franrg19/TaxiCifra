@@ -147,3 +147,40 @@ def test_update_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json() == NOT_AUTHENTICATED
+
+
+def test_delete_removes_own_vehicle(client: TestClient, auth_headers: dict[str, str]) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert client.get(VEHICLES_URL, headers=auth_headers).json() == []
+
+
+def test_delete_vehicle_of_another_user_returns_404_and_keeps_it(
+    client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}", headers=other_auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "vehicle_not_found"
+    assert len(client.get(VEHICLES_URL, headers=auth_headers).json()) == 1
+
+
+def test_delete_unknown_vehicle_returns_404(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.delete(f"{VEHICLES_URL}/999999", headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "vehicle_not_found"
+
+
+def test_delete_requires_authentication(client: TestClient) -> None:
+    response = client.delete(f"{VEHICLES_URL}/1")
+
+    assert response.status_code == 401
+    assert response.json() == NOT_AUTHENTICATED

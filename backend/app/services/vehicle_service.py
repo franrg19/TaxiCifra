@@ -59,3 +59,10 @@ def update_vehicle(db: Session, user_id: int, vehicle_id: int, data: VehicleUpda
     db.commit()
     db.refresh(vehicle)
     return vehicle
+
+
+def delete_vehicle(db: Session, user_id: int, vehicle_id: int) -> None:
+    """Elimina un vehículo del usuario."""
+    vehicle = get_vehicle_or_404(db, vehicle_id, user_id)
+    db.delete(vehicle)
+    db.commit()
