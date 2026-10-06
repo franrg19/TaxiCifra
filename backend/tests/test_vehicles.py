@@ -73,3 +73,77 @@ def test_vehicles_require_authentication(client: TestClient) -> None:
     assert list_response.json() == NOT_AUTHENTICATED
     assert create_response.status_code == 401
     assert create_response.json() == NOT_AUTHENTICATED
+
+
+def create_vehicle(client: TestClient, headers: dict[str, str], plate: str = "1234ABC") -> int:
+    """Crea un vehículo y devuelve su id."""
+    response = client.post(VEHICLES_URL, json={**VEHICLE, "plate": plate}, headers=headers)
+    return response.json()["id"]
+
+
+def test_update_replaces_vehicle_data(client: TestClient, auth_headers: dict[str, str]) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    new_data = {"plate": "5678 def", "brand": "Skoda", "model": "Octavia"}
+
+    response = client.put(f"{VEHICLES_URL}/{vehicle_id}", json=new_data, headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == vehicle_id
+    assert body["plate"] == "5678DEF"
+    assert body["brand"] == "Skoda"
+    assert body["model"] == "Octavia"
+
+
+def test_update_allows_keeping_the_same_plate(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+
+    response = client.put(
+        f"{VEHICLES_URL}/{vehicle_id}", json={**VEHICLE, "model": "Corolla"}, headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["model"] == "Corolla"
+
+
+def test_update_rejects_plate_of_another_own_vehicle(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    create_vehicle(client, auth_headers, plate="1234ABC")
+    second_id = create_vehicle(client, auth_headers, plate="5678DEF")
+
+    response = client.put(
+        f"{VEHICLES_URL}/{second_id}", json={**VEHICLE, "plate": "1234ABC"}, headers=auth_headers
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "plate_already_registered"
+
+
+def test_update_vehicle_of_another_user_returns_404(
+    client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+
+    response = client.put(f"{VEHICLES_URL}/{vehicle_id}", json=VEHICLE, headers=other_auth_headers)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Vehículo no encontrado", "code": "vehicle_not_found"}
+
+
+def test_update_unknown_vehicle_returns_404(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.put(f"{VEHICLES_URL}/999999", json=VEHICLE, headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "vehicle_not_found"
+
+
+def test_update_requires_authentication(client: TestClient) -> None:
+    response = client.put(f"{VEHICLES_URL}/1", json=VEHICLE)
+
+    assert response.status_code == 401
+    assert response.json() == NOT_AUTHENTICATED

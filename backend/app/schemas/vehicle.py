@@ -21,6 +21,10 @@ class VehicleCreate(BaseModel):
         return plate
 
 
+class VehicleUpdate(VehicleCreate):
+    """Datos de entrada para editar un vehículo (se reemplazan todos los campos)."""
+
+
 class VehicleRead(BaseModel):
     """Datos del vehículo que devuelve la API."""
 
