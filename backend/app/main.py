@@ -14,6 +14,8 @@ VALIDATION_MESSAGES = {
     "string_too_long": "debe tener como máximo {max_length} caracteres",
     "enum": "valor no permitido",
     "greater_than_equal": "debe ser mayor o igual que {ge}",
+    "less_than_equal": "debe ser menor o igual que {le}",
+    "int_parsing": "debe ser un número entero",
     "decimal_max_places": "debe tener como máximo {decimal_places} decimales",
     "decimal_parsing": "debe ser un número",
     "date_from_datetime_parsing": "debe ser una fecha con formato AAAA-MM-DD",

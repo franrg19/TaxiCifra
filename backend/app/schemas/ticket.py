@@ -22,6 +22,18 @@ class TicketCreate(BaseModel):
     vehicle_id: int | None = None
 
 
+class TicketFilters(BaseModel):
+    """Parámetros de consulta del listado de tickets: paginación y filtros opcionales."""
+
+    page: int = Field(default=1, ge=1)
+    size: int = Field(default=20, ge=1, le=100)
+    date_from: dt.date | None = None
+    date_to: dt.date | None = None
+    category: TicketCategory | None = None
+    status: TicketStatus | None = None
+    vehicle_id: int | None = None
+
+
 class TicketRead(BaseModel):
     """Datos del ticket que devuelve la API."""
 
