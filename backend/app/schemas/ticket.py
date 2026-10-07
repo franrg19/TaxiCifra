@@ -22,6 +22,10 @@ class TicketCreate(BaseModel):
     vehicle_id: int | None = None
 
 
+class TicketUpdate(TicketCreate):
+    """Datos de entrada para editar un ticket. Se reemplazan todos los campos."""
+
+
 class TicketFilters(BaseModel):
     """Parámetros de consulta del listado de tickets: paginación y filtros opcionales."""
 

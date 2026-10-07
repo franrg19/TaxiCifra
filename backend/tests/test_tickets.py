@@ -297,3 +297,140 @@ def test_list_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["code"] == "not_authenticated"
+
+
+def confirm_in_db(db: Session, ticket_id: int) -> None:
+    """Marca un ticket como confirmado directamente en la base de datos."""
+    db.execute(update(Ticket).where(Ticket.id == ticket_id).values(status="confirmed"))
+
+
+def test_get_returns_own_ticket(client: TestClient, auth_headers: dict[str, str]) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == ticket_id
+    assert body["vendor"] == "Gasolinera Sol"
+    assert body["total"] == "50.00"
+
+
+def test_update_replaces_ticket_data(client: TestClient, auth_headers: dict[str, str]) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+    new_data = {**TICKET, "vendor": "Taller Paco", "category": "reparaciones", "total": "60.00"}
+
+    response = client.put(f"{TICKETS_URL}/{ticket_id}", json=new_data, headers=auth_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["vendor"] == "Taller Paco"
+    assert body["category"] == "reparaciones"
+    assert body["total"] == "60.00"
+    assert body["date"] == "2026-10-05"
+
+
+def test_update_clears_fields_that_are_not_sent(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.put(
+        f"{TICKETS_URL}/{ticket_id}", json={"vendor": "Taller Paco"}, headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["vendor"] == "Taller Paco"
+    assert body["total"] is None
+    assert body["date"] is None
+
+
+def test_update_returns_confirmed_ticket_to_pending_review(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+    confirm_in_db(db, ticket_id)
+
+    response = client.put(f"{TICKETS_URL}/{ticket_id}", json=TICKET, headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "pending_review"
+
+
+def test_update_rejects_vehicle_of_another_user(
+    client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+    foreign_vehicle = create_vehicle(client, other_auth_headers)
+
+    response = client.put(
+        f"{TICKETS_URL}/{ticket_id}",
+        json={**TICKET, "vehicle_id": foreign_vehicle},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "vehicle_not_found"
+
+
+def test_update_rejects_invalid_data(client: TestClient, auth_headers: dict[str, str]) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.put(
+        f"{TICKETS_URL}/{ticket_id}", json={**TICKET, "total": "-1.00"}, headers=auth_headers
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "total: debe ser mayor o igual que 0"
+
+
+def test_delete_removes_own_ticket(client: TestClient, auth_headers: dict[str, str]) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.delete(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers).status_code == 404
+
+
+@pytest.mark.parametrize("method", ["get", "put", "delete"])
+def test_ticket_of_another_user_returns_404_and_is_untouched(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    other_auth_headers: dict[str, str],
+    method: str,
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+    body = {"json": {"vendor": "Intruso"}} if method == "put" else {}
+
+    response = client.request(
+        method, f"{TICKETS_URL}/{ticket_id}", headers=other_auth_headers, **body
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Ticket no encontrado", "code": "ticket_not_found"}
+    own = client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers).json()
+    assert own["vendor"] == "Gasolinera Sol"
+
+
+@pytest.mark.parametrize("method", ["get", "put", "delete"])
+def test_unknown_ticket_returns_404(
+    client: TestClient, auth_headers: dict[str, str], method: str
+) -> None:
+    body = {"json": TICKET} if method == "put" else {}
+
+    response = client.request(method, f"{TICKETS_URL}/999999", headers=auth_headers, **body)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+
+
+@pytest.mark.parametrize("method", ["get", "put", "delete"])
+def test_ticket_detail_requires_authentication(client: TestClient, method: str) -> None:
+    body = {"json": TICKET} if method == "put" else {}
+
+    response = client.request(method, f"{TICKETS_URL}/1", **body)
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "not_authenticated"
