@@ -31,6 +31,9 @@ def update_vehicle(
 
 
 @router.delete("/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_vehicle(vehicle_id: int, user: CurrentUser, db: DbSession) -> None:
-    """Elimina un vehículo del usuario autenticado."""
-    vehicle_service.delete_vehicle(db, user.id, vehicle_id)
+def delete_vehicle(vehicle_id: int, user: CurrentUser, db: DbSession, force: bool = False) -> None:
+    """Elimina un vehículo del usuario autenticado.
+
+    Si tiene tickets asociados responde 409; con ?force=true se borra y sus tickets se conservan.
+    """
+    vehicle_service.delete_vehicle(db, user.id, vehicle_id, force)
