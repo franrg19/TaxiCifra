@@ -150,7 +150,7 @@ Importes: `Numeric(10, 2)` / `Decimal`. **NUNCA `float`.** Moneda: euros.
 
 **No existe la entidad Gasto.** Un gasto es un ticket con `status = confirmed`.
 
-**Categorías de ticket:** `combustible`, `mantenimiento`, `seguro`, `limpieza`, `reparaciones`, `otros`.
+**Categorías de ticket:** `combustible`, `mantenimiento`, `seguro`, `limpieza`, `reparaciones`,`emisora`,`autonomo`,`datafono`, `otros`.
 
 Todo cambio de esquema pasa por una migración de Alembic. NUNCA modifiques la base de datos a mano.
 
@@ -329,21 +329,21 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 
 ### Tomadas durante el desarrollo (aprobadas por Fran; NO las cambies)
 
-| Tema | Decisión |
-| --- | --- |
-| Contraseña | Mínimo 8 caracteres (máximo 128) |
-| Email | Se guarda en minúsculas; el registro y el login no distinguen mayúsculas |
-| Matrícula | Se guarda en mayúsculas y sin espacios ni guiones (`1234 abc` = `1234ABC`). Máximo 15 caracteres; marca y modelo, 50 |
-| JWT | Algoritmo HS256. El token lleva `sub` (id de usuario) y `exp`. Clave en la variable `JWT_SECRET` (obligatoria, sin valor por defecto) |
-| Login | Entrada JSON (`email`, `password`); salida `{"access_token", "token_type": "bearer"}`. Email inexistente y contraseña incorrecta devuelven el mismo `401` (`invalid_credentials`) |
-| Códigos de respuesta | `201` altas · `204` borrados · `401` sin token válido (`not_authenticated`) · `404` recurso inexistente o ajeno · `409` duplicados (`email_already_registered`, `plate_already_registered`) · `422` validación (`validation_error`) |
-| `GET /vehicles` | Sin paginación (devuelve todos los vehículos del usuario) |
-| Borrado de vehículo | Se implementa por partes: versión básica en la semana 2 (`204`/`404`, sin `force`); el `409` y `?force=true` se añaden al crear tickets (semana 3) e ingresos y lecturas (semana 5) |
-| Tests del backend | Se ejecutan en Docker contra una base de datos aparte (`<nombre>_test`), creada automáticamente; cada test se deshace con un rollback |
-| Endpoint `/auth/me` | No existe. Se decidirá en la semana 6 si el frontend lo necesita |
-| Memoria | Sigue la plantilla del centro: RFTP y casos de uso (no historias de usuario). El contrato de la API no se incluye en la memoria (lo documenta Swagger) |
-| Planificación | Inicio de auth (tabla `users` y registro) adelantado a la semana 1 a petición de Fran |
-| Nombre del proyecto | **Taxicifra** (antes TaxiGest; cambiado el 06/10/2026 porque ya existe una app con ese nombre para el mismo público). Solo cambia el nombre visible: la carpeta, la base de datos, el usuario de PostgreSQL y los nombres de Docker siguen siendo `taxigest` |
+| Tema                 | Decisión                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contraseña           | Mínimo 8 caracteres (máximo 128)                                                                                                                                                                                                                             |
+| Email                | Se guarda en minúsculas; el registro y el login no distinguen mayúsculas                                                                                                                                                                                     |
+| Matrícula            | Se guarda en mayúsculas y sin espacios ni guiones (`1234 abc` = `1234ABC`). Máximo 15 caracteres; marca y modelo, 50                                                                                                                                         |
+| JWT                  | Algoritmo HS256. El token lleva `sub` (id de usuario) y `exp`. Clave en la variable `JWT_SECRET` (obligatoria, sin valor por defecto)                                                                                                                        |
+| Login                | Entrada JSON (`email`, `password`); salida `{"access_token", "token_type": "bearer"}`. Email inexistente y contraseña incorrecta devuelven el mismo `401` (`invalid_credentials`)                                                                            |
+| Códigos de respuesta | `201` altas · `204` borrados · `401` sin token válido (`not_authenticated`) · `404` recurso inexistente o ajeno · `409` duplicados (`email_already_registered`, `plate_already_registered`) · `422` validación (`validation_error`)                          |
+| `GET /vehicles`      | Sin paginación (devuelve todos los vehículos del usuario)                                                                                                                                                                                                    |
+| Borrado de vehículo  | Se implementa por partes: versión básica en la semana 2 (`204`/`404`, sin `force`); el `409` y `?force=true` se añaden al crear tickets (semana 3) e ingresos y lecturas (semana 5)                                                                          |
+| Tests del backend    | Se ejecutan en Docker contra una base de datos aparte (`<nombre>_test`), creada automáticamente; cada test se deshace con un rollback                                                                                                                        |
+| Endpoint `/auth/me`  | No existe. Se decidirá en la semana 6 si el frontend lo necesita                                                                                                                                                                                             |
+| Memoria              | Sigue la plantilla del centro: RFTP y casos de uso (no historias de usuario). El contrato de la API no se incluye en la memoria (lo documenta Swagger)                                                                                                       |
+| Planificación        | Inicio de auth (tabla `users` y registro) adelantado a la semana 1 a petición de Fran                                                                                                                                                                        |
+| Nombre del proyecto  | **Taxicifra** (antes TaxiGest; cambiado el 06/10/2026 porque ya existe una app con ese nombre para el mismo público). Solo cambia el nombre visible: la carpeta, la base de datos, el usuario de PostgreSQL y los nombres de Docker siguen siendo `taxigest` |
 
 ### Abiertas
 
