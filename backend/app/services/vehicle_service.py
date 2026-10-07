@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
-from app.models import Vehicle
+from app.models import Ticket, Vehicle
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
 
 
@@ -61,8 +61,23 @@ def update_vehicle(db: Session, user_id: int, vehicle_id: int, data: VehicleUpda
     return vehicle
 
 
-def delete_vehicle(db: Session, user_id: int, vehicle_id: int) -> None:
-    """Elimina un vehículo del usuario."""
+def delete_vehicle(db: Session, user_id: int, vehicle_id: int, force: bool = False) -> None:
+    """Elimina un vehículo del usuario.
+
+    Si tiene tickets asociados responde 409, salvo que se indique force. Con force, el
+    vehículo se borra y sus tickets se conservan sin vehículo (lo hace la clave foránea,
+    definida con ON DELETE SET NULL).
+    """
     vehicle = get_vehicle_or_404(db, vehicle_id, user_id)
+
+    has_tickets = db.scalar(select(exists().where(Ticket.vehicle_id == vehicle.id)))
+    if has_tickets and not force:
+        raise ApiError(
+            status_code=409,
+            detail="El vehículo tiene tickets asociados. Confirma el borrado para eliminarlo: "
+            "sus tickets se conservarán sin vehículo",
+            code="vehicle_has_related_data",
+        )
+
     db.delete(vehicle)
     db.commit()

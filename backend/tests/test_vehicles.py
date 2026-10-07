@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Ticket
 
 VEHICLES_URL = "/api/v1/vehicles"
+TICKETS_URL = "/api/v1/tickets"
 VEHICLE = {"plate": "1234 abc", "brand": "Toyota", "model": "Prius"}
 NOT_AUTHENTICATED = {"detail": "No autenticado", "code": "not_authenticated"}
 
@@ -184,3 +189,46 @@ def test_delete_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json() == NOT_AUTHENTICATED
+
+
+def create_ticket_for_vehicle(client: TestClient, headers: dict[str, str], vehicle_id: int) -> int:
+    """Crea un ticket asociado al vehículo y devuelve su id."""
+    response = client.post(TICKETS_URL, json={"vehicle_id": vehicle_id}, headers=headers)
+    return response.json()["id"]
+
+
+def test_delete_vehicle_with_tickets_returns_409_and_keeps_it(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    create_ticket_for_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}", headers=auth_headers)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "vehicle_has_related_data"
+    assert len(client.get(VEHICLES_URL, headers=auth_headers).json()) == 1
+
+
+def test_force_delete_removes_vehicle_and_keeps_its_tickets_without_vehicle(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    ticket_id = create_ticket_for_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}?force=true", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert client.get(VEHICLES_URL, headers=auth_headers).json() == []
+    remaining = db.execute(select(Ticket.id, Ticket.vehicle_id)).all()
+    assert remaining == [(ticket_id, None)]
+
+
+def test_force_delete_works_for_vehicle_without_tickets(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}?force=true", headers=auth_headers)
+
+    assert response.status_code == 204
