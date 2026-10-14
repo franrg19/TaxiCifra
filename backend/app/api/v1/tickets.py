@@ -38,6 +38,12 @@ def update_ticket(ticket_id: int, data: TicketUpdate, user: CurrentUser, db: DbS
     return ticket_service.update_ticket(db, user.id, ticket_id, data)
 
 
+@router.post("/{ticket_id}/confirm", response_model=TicketRead)
+def confirm_ticket(ticket_id: int, user: CurrentUser, db: DbSession) -> Ticket:
+    """Confirma un ticket del usuario autenticado: pasa a contar como gasto."""
+    return ticket_service.confirm_ticket(db, user.id, ticket_id)
+
+
 @router.delete("/{ticket_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_ticket(ticket_id: int, user: CurrentUser, db: DbSession) -> None:
     """Elimina un ticket del usuario autenticado."""

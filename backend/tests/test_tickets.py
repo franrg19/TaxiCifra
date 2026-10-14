@@ -434,3 +434,129 @@ def test_ticket_detail_requires_authentication(client: TestClient, method: str) 
 
     assert response.status_code == 401
     assert response.json()["code"] == "not_authenticated"
+
+
+# --- Confirmación ---
+
+
+def confirm_url(ticket_id: int | str) -> str:
+    """Devuelve la ruta de confirmación de un ticket."""
+    return f"{TICKETS_URL}/{ticket_id}/confirm"
+
+
+def test_confirm_marks_complete_ticket_as_confirmed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+    stored = client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers).json()
+    assert stored["status"] == "confirmed"
+
+
+def test_confirm_rejects_incomplete_ticket_listing_missing_fields(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, vendor="Gasolinera Sol", total="50.00")
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "Faltan campos para confirmar el ticket: fecha, categoría, base imponible, IVA",
+        "code": "ticket_incomplete",
+    }
+
+
+def test_confirm_rejects_amounts_that_do_not_match(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **{**TICKET, "total": "55.00"})
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "Los importes no cuadran: base imponible + IVA suman 50,00 € y el total es 55,00 €"
+        ),
+        "code": "amounts_mismatch",
+    }
+
+
+@pytest.mark.parametrize("total", ["49.98", "50.02"])
+def test_confirm_accepts_difference_within_tolerance(
+    client: TestClient, auth_headers: dict[str, str], total: str
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **{**TICKET, "total": total})
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("total", ["49.97", "50.03"])
+def test_confirm_rejects_difference_beyond_tolerance(
+    client: TestClient, auth_headers: dict[str, str], total: str
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **{**TICKET, "total": total})
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "amounts_mismatch"
+
+
+def test_failed_confirmation_leaves_ticket_pending(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **{**TICKET, "total": "55.00"})
+
+    client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    stored = client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers).json()
+    assert stored["status"] == "pending_review"
+
+
+def test_confirm_already_confirmed_ticket_returns_it_again(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+    client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    response = client.post(confirm_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+
+
+def test_confirm_ticket_of_another_user_returns_404_and_is_untouched(
+    client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+) -> None:
+    ticket_id = create_ticket(client, auth_headers, **TICKET)
+
+    response = client.post(confirm_url(ticket_id), headers=other_auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+    own = client.get(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers).json()
+    assert own["status"] == "pending_review"
+
+
+def test_confirm_unknown_ticket_returns_404(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.post(confirm_url(999999), headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+
+
+def test_confirm_requires_authentication(client: TestClient) -> None:
+    response = client.post(confirm_url(1))
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "not_authenticated"

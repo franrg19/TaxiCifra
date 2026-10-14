@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -7,6 +8,19 @@ from app.core.errors import ApiError
 from app.models import Ticket, TicketStatus
 from app.schemas.ticket import TicketCreate, TicketFilters, TicketUpdate
 from app.services.vehicle_service import get_vehicle_or_404
+
+# Campos obligatorios para confirmar un ticket, con su nombre para los mensajes de error
+REQUIRED_TO_CONFIRM = {
+    "date": "fecha",
+    "vendor": "establecimiento",
+    "category": "categoría",
+    "net_amount": "base imponible",
+    "vat": "IVA",
+    "total": "total",
+}
+
+# Diferencia máxima admitida entre base imponible + IVA y el total (redondeos del ticket)
+AMOUNT_TOLERANCE = Decimal("0.02")
 
 
 def get_ticket_or_404(db: Session, ticket_id: int, user_id: int) -> Ticket:
@@ -70,6 +84,53 @@ def update_ticket(db: Session, user_id: int, ticket_id: int, data: TicketUpdate)
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+def confirm_ticket(db: Session, user_id: int, ticket_id: int) -> Ticket:
+    """Confirma un ticket del usuario si está completo y sus importes cuadran.
+
+    Confirmar un ticket ya confirmado no es un error: se vuelve a validar y se devuelve igual.
+    """
+    ticket = get_ticket_or_404(db, ticket_id, user_id)
+    _ensure_complete(ticket)
+    _ensure_amounts_match(ticket)
+
+    ticket.status = TicketStatus.CONFIRMED
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+def _ensure_complete(ticket: Ticket) -> None:
+    """Lanza 422 si falta algún campo obligatorio para confirmar."""
+    missing = [
+        label for field, label in REQUIRED_TO_CONFIRM.items() if getattr(ticket, field) is None
+    ]
+    if missing:
+        raise ApiError(
+            status_code=422,
+            detail=f"Faltan campos para confirmar el ticket: {', '.join(missing)}",
+            code="ticket_incomplete",
+        )
+
+
+def _ensure_amounts_match(ticket: Ticket) -> None:
+    """Lanza 422 si base imponible + IVA no coincide con el total (con la tolerancia)."""
+    expected = ticket.net_amount + ticket.vat
+    if abs(expected - ticket.total) > AMOUNT_TOLERANCE:
+        raise ApiError(
+            status_code=422,
+            detail=(
+                f"Los importes no cuadran: base imponible + IVA suman {_euros(expected)} "
+                f"y el total es {_euros(ticket.total)}"
+            ),
+            code="amounts_mismatch",
+        )
+
+
+def _euros(amount: Decimal) -> str:
+    """Formatea un importe al estilo español: 50,00 €."""
+    return f"{amount:.2f} €".replace(".", ",")
 
 
 def delete_ticket(db: Session, user_id: int, ticket_id: int) -> None:

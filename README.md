@@ -17,7 +17,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | --- | --- | --- |
 | Autenticación (registro y login) | Hecho | Pendiente |
 | Vehículos | Hecho | Pendiente |
-| Tickets y OCR | En curso (gestión manual completa; falta foto, OCR y confirmación) | Pendiente |
+| Tickets y OCR | En curso (gestión manual y confirmación completas; falta foto y OCR) | Pendiente |
 | Ingresos | Pendiente | Pendiente |
 | Kilometraje | Pendiente | Pendiente |
 | Dashboard | Pendiente | Pendiente |
@@ -37,6 +37,7 @@ Endpoints disponibles (prefijo `/api/v1`):
 | GET | `/tickets/{id}` | Consultar un ticket | Sí |
 | PUT | `/tickets/{id}` | Editar un ticket (vuelve a pendiente de revisión) | Sí |
 | DELETE | `/tickets/{id}` | Eliminar un ticket | Sí |
+| POST | `/tickets/{id}/confirm` | Confirmar un ticket (campos completos y base + IVA = total, ±0,02 €) | Sí |
 
 ## Requisitos
 
