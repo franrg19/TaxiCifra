@@ -347,6 +347,7 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Alta de tickets | Todos los campos de contenido son opcionales al crear (borrador). Importes ≥ 0 con dos decimales como máximo; `vendor` hasta 100 caracteres. El cliente no puede fijar el estado: todo ticket nace en `pending_review`. Estado y categoría se guardan como texto validado (no como `ENUM` de PostgreSQL) |
 | Listado de tickets | Respuesta paginada con la forma `{"items", "total", "page", "size"}` (esquema genérico `Page[T]`, reutilizable en ingresos). Orden: fecha descendente, sin fecha al final. `page` ≥ 1 y `size` entre 1 y 100; fuera de rango → `422`. Fechas inclusivas. Un `vehicle_id` ajeno en el filtro devuelve lista vacía |
 | Edición de tickets | `PUT /tickets/{id}` reemplaza todos los campos y deja SIEMPRE el ticket en `pending_review`, aunque estuviera confirmado. La edición no valida importes: solo lo hace la confirmación. Recurso inexistente o ajeno → `404` (`ticket_not_found`) |
+| Confirmación de tickets | `POST /tickets/{id}/confirm` sin cuerpo; confirma el ticket tal como está guardado. Si faltan campos → `422` (`ticket_incomplete`) indicando TODOS los que faltan; si la diferencia entre `net_amount + vat` y `total` supera 0,02 € → `422` (`amounts_mismatch`) con los importes. Si falla, el ticket sigue en `pending_review`. Confirmar un ticket ya confirmado devuelve `200` (idempotente) |
 
 ### Abiertas
 
