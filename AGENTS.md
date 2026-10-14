@@ -233,13 +233,13 @@ Interfaz obligatoria:
 
 ```python
 # services/ocr/base.py
-from datetime import date
+import datetime as dt
 from decimal import Decimal
 from typing import Protocol
 from pydantic import BaseModel
 
 class ExtractedTicket(BaseModel):
-    date: date | None = None
+    date: dt.date | None = None  # dt.date: el campo "date" taparía al tipo date
     vendor: str | None = None
     net_amount: Decimal | None = None
     vat: Decimal | None = None
