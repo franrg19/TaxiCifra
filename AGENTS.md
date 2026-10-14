@@ -65,7 +65,7 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **NO uses:** SQLAlchemy async, Django, Flask, ORMs alternativos, librerías de estado global pesadas en el frontend, ni ninguna dependencia que no esté aquí sin preguntar antes.
 
-**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
+**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
 
 ## 5. Arquitectura
 

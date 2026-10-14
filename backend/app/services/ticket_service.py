@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from app.core.errors import ApiError
 from app.models import Ticket, TicketStatus
 from app.schemas.ticket import TicketCreate, TicketFilters, TicketUpdate
+from app.services import image_storage
+from app.services.ocr.base import OcrProvider
 from app.services.vehicle_service import get_vehicle_or_404
 
 # Campos obligatorios para confirmar un ticket, con su nombre para los mensajes de error
@@ -37,6 +39,37 @@ def create_ticket(db: Session, user_id: int, data: TicketCreate) -> Ticket:
         get_vehicle_or_404(db, data.vehicle_id, user_id)
 
     ticket = Ticket(user_id=user_id, status=TicketStatus.PENDING_REVIEW, **data.model_dump())
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+def create_ticket_from_image(db: Session, user_id: int, image: bytes, ocr: OcrProvider) -> Ticket:
+    """Crea un ticket a partir de su foto: guarda la imagen y rellena los datos con el OCR.
+
+    El ticket nace pendiente de revisión: lo leído por el OCR nunca es definitivo.
+    """
+    mime_type = image_storage.detect_mime_type(image)
+    if mime_type is None:
+        raise ApiError(
+            status_code=415, detail="La imagen debe ser JPG o PNG", code="unsupported_image_type"
+        )
+    if len(image) > image_storage.MAX_IMAGE_SIZE:
+        raise ApiError(
+            status_code=413, detail="La imagen no puede superar 5 MB", code="image_too_large"
+        )
+
+    # Primero se guarda la imagen: así se conserva aunque el OCR falle
+    image_path = image_storage.save_image(image, mime_type)
+    extracted = ocr.extract(image, mime_type)
+
+    ticket = Ticket(
+        user_id=user_id,
+        status=TicketStatus.PENDING_REVIEW,
+        image_path=image_path,
+        **extracted.model_dump(),
+    )
     db.add(ticket)
     db.commit()
     db.refresh(ticket)

@@ -9,6 +9,8 @@ from app.core.errors import ApiError
 from app.core.security import decode_access_token
 from app.db.database import SessionLocal
 from app.models import User
+from app.services.ocr.base import OcrProvider
+from app.services.ocr.fake import FakeOcrProvider
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -31,6 +33,12 @@ def get_current_user(
     return user
 
 
+def get_ocr_provider() -> OcrProvider:
+    """Devuelve el proveedor OCR/IA. Hasta elegir el real (semana 3), el simulado."""
+    return FakeOcrProvider()
+
+
 # Alias para declarar las dependencias en las rutas sin repetir Annotated
 DbSession = Annotated[Session, Depends(get_db)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+OcrService = Annotated[OcrProvider, Depends(get_ocr_provider)]
