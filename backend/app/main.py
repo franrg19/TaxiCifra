@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.v1 import auth, tickets, vehicles
+from app.api.v1 import auth, incomes, tickets, vehicles
 
 # Motivo en español por tipo de error de Pydantic (el resto: "valor no válido")
 VALIDATION_MESSAGES = {
@@ -13,6 +13,7 @@ VALIDATION_MESSAGES = {
     "string_too_short": "debe tener al menos {min_length} caracteres",
     "string_too_long": "debe tener como máximo {max_length} caracteres",
     "enum": "valor no permitido",
+    "greater_than": "debe ser mayor que {gt}",
     "greater_than_equal": "debe ser mayor o igual que {ge}",
     "less_than_equal": "debe ser menor o igual que {le}",
     "int_parsing": "debe ser un número entero",
@@ -26,6 +27,7 @@ app = FastAPI(title="Taxicifra API")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(vehicles.router, prefix="/api/v1")
 app.include_router(tickets.router, prefix="/api/v1")
+app.include_router(incomes.router, prefix="/api/v1")
 
 
 def _validation_message(error: dict[str, Any]) -> str:

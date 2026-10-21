@@ -2,10 +2,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Ticket
+from app.models import Income, Ticket
 
 VEHICLES_URL = "/api/v1/vehicles"
 TICKETS_URL = "/api/v1/tickets"
+INCOMES_URL = "/api/v1/incomes"
 VEHICLE = {"plate": "1234 abc", "brand": "Toyota", "model": "Prius"}
 NOT_AUTHENTICATED = {"detail": "No autenticado", "code": "not_authenticated"}
 
@@ -232,3 +233,35 @@ def test_force_delete_works_for_vehicle_without_tickets(
     response = client.delete(f"{VEHICLES_URL}/{vehicle_id}?force=true", headers=auth_headers)
 
     assert response.status_code == 204
+
+
+def create_income_for_vehicle(client: TestClient, headers: dict[str, str], vehicle_id: int) -> int:
+    """Crea un ingreso asociado al vehículo y devuelve su id."""
+    income = {"date": "2026-10-20", "amount": "100.00", "vehicle_id": vehicle_id}
+    return client.post(INCOMES_URL, json=income, headers=headers).json()["id"]
+
+
+def test_delete_vehicle_with_incomes_returns_409_and_keeps_it(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    create_income_for_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}", headers=auth_headers)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "vehicle_has_related_data"
+    assert len(client.get(VEHICLES_URL, headers=auth_headers).json()) == 1
+
+
+def test_force_delete_keeps_incomes_without_vehicle(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    income_id = create_income_for_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}?force=true", headers=auth_headers)
+
+    assert response.status_code == 204
+    remaining = db.execute(select(Income.id, Income.vehicle_id)).all()
+    assert remaining == [(income_id, None)]
