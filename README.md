@@ -36,6 +36,7 @@ Endpoints disponibles (prefijo `/api/v1`):
 | POST | `/tickets` | Crear un ticket a mano (nace pendiente de revisión) | Sí |
 | POST | `/tickets/upload` | Crear un ticket a partir de su foto (JPG o PNG, máx. 5 MB), leída con OCR | Sí |
 | GET | `/tickets/{id}` | Consultar un ticket | Sí |
+| GET | `/tickets/{id}/image` | Ver la foto de un ticket (solo su dueño) | Sí |
 | PUT | `/tickets/{id}` | Editar un ticket (vuelve a pendiente de revisión) | Sí |
 | DELETE | `/tickets/{id}` | Eliminar un ticket | Sí |
 | POST | `/tickets/{id}/confirm` | Confirmar un ticket (campos completos y base + IVA = total, ±0,02 €) | Sí |

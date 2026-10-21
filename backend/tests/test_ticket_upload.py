@@ -259,3 +259,82 @@ def test_ticket_from_failed_ocr_can_be_completed_and_confirmed(
 
     assert response.status_code == 200
     assert response.json()["status"] == "confirmed"
+
+
+# --- Ver la imagen ---
+
+
+def image_url(ticket_id: int) -> str:
+    """Devuelve la ruta de la imagen de un ticket."""
+    return f"{TICKETS_URL}/{ticket_id}/image"
+
+
+@pytest.mark.parametrize(
+    ("content", "filename", "content_type"),
+    [(JPEG, "ticket.jpg", "image/jpeg"), (PNG, "ticket.png", "image/png")],
+)
+def test_get_image_returns_uploaded_photo(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    content: bytes,
+    filename: str,
+    content_type: str,
+) -> None:
+    ticket_id = upload(client, auth_headers, content, filename, content_type).json()["id"]
+
+    response = client.get(image_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == content_type
+    assert response.content == content
+
+
+def test_get_image_of_manual_ticket_returns_404(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    ticket_id = client.post(TICKETS_URL, json={}, headers=auth_headers).json()["id"]
+
+    response = client.get(image_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "El ticket no tiene imagen", "code": "image_not_found"}
+
+
+def test_get_image_missing_on_disk_returns_404(
+    client: TestClient, auth_headers: dict[str, str], images_dir: Path
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+    for file in images_dir.iterdir():
+        file.unlink()
+
+    response = client.get(image_url(ticket_id), headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "image_not_found"
+
+
+def test_get_image_of_another_user_returns_404(
+    client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+
+    response = client.get(image_url(ticket_id), headers=other_auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+
+
+def test_get_image_of_unknown_ticket_returns_404(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.get(image_url(999999), headers=auth_headers)
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ticket_not_found"
+
+
+def test_get_image_requires_authentication(client: TestClient) -> None:
+    response = client.get(image_url(1))
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "not_authenticated"

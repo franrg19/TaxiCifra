@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentUser, DbSession, OcrService
 from app.models import Ticket
@@ -38,6 +39,12 @@ def upload_ticket(image: UploadFile, user: CurrentUser, db: DbSession, ocr: OcrS
 def get_ticket(ticket_id: int, user: CurrentUser, db: DbSession) -> Ticket:
     """Devuelve un ticket del usuario autenticado."""
     return ticket_service.get_ticket_or_404(db, ticket_id, user.id)
+
+
+@router.get("/{ticket_id}/image", response_class=FileResponse)
+def get_ticket_image(ticket_id: int, user: CurrentUser, db: DbSession) -> FileResponse:
+    """Devuelve la foto de un ticket del usuario autenticado."""
+    return FileResponse(ticket_service.get_ticket_image(db, user.id, ticket_id))
 
 
 @router.put("/{ticket_id}", response_model=TicketRead)

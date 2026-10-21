@@ -25,7 +25,12 @@ def save_image(data: bytes, mime_type: str) -> str:
     """Guarda la imagen con un nombre aleatorio y devuelve ese nombre."""
     extension = next(ext for mime, ext in SIGNATURES.values() if mime == mime_type)
     filename = f"{uuid4().hex}.{extension}"
-    folder = Path(settings.images_dir)
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / filename).write_bytes(data)
+    path = image_location(filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
     return filename
+
+
+def image_location(filename: str) -> Path:
+    """Devuelve la ruta en disco de una imagen guardada a partir de su nombre."""
+    return Path(settings.images_dir) / filename

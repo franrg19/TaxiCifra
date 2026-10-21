@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -107,6 +108,15 @@ def _valid_fields(extracted: ExtractedTicket) -> dict[str, Any]:
         for invalid in error.errors():
             data[invalid["loc"][0]] = None
         return TicketCreate(**data).model_dump()
+
+
+def get_ticket_image(db: Session, user_id: int, ticket_id: int) -> Path:
+    """Devuelve la ruta en disco de la foto de un ticket del usuario, o responde 404."""
+    ticket = get_ticket_or_404(db, ticket_id, user_id)
+    path = image_storage.image_location(ticket.image_path) if ticket.image_path else None
+    if path is None or not path.is_file():
+        raise ApiError(status_code=404, detail="El ticket no tiene imagen", code="image_not_found")
+    return path
 
 
 def list_tickets(db: Session, user_id: int, filters: TicketFilters) -> tuple[Sequence[Ticket], int]:
