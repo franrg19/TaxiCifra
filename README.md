@@ -19,7 +19,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | Vehículos | Hecho | Pendiente |
 | Tickets y OCR | En curso (gestión manual, confirmación y subida de foto con OCR simulado; falta el proveedor real) | Pendiente |
 | Ingresos | Hecho | Pendiente |
-| Kilometraje | Pendiente | Pendiente |
+| Kilometraje | En curso (alta de lecturas; falta listado y borrado) | Pendiente |
 | Dashboard | Pendiente | Pendiente |
 
 Endpoints disponibles (prefijo `/api/v1`):
@@ -32,6 +32,7 @@ Endpoints disponibles (prefijo `/api/v1`):
 | POST | `/vehicles` | Dar de alta un vehículo | Sí |
 | PUT | `/vehicles/{id}` | Editar un vehículo | Sí |
 | DELETE | `/vehicles/{id}` | Eliminar un vehículo | Sí |
+| POST | `/vehicles/{id}/odometer` | Registrar una lectura del cuentakilómetros (nunca por debajo de la anterior) | Sí |
 | GET | `/tickets` | Listar tickets con filtros (fechas, categoría, estado, vehículo) y paginación | Sí |
 | POST | `/tickets` | Crear un ticket a mano (nace pendiente de revisión) | Sí |
 | POST | `/tickets/upload` | Crear un ticket a partir de su foto (JPG o PNG, máx. 5 MB), leída con OCR | Sí |

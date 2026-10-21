@@ -4,7 +4,7 @@ from sqlalchemy import exists, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
-from app.models import Income, Ticket, Vehicle
+from app.models import Income, OdometerReading, Ticket, Vehicle
 from app.schemas.vehicle import VehicleCreate, VehicleUpdate
 
 
@@ -64,17 +64,18 @@ def update_vehicle(db: Session, user_id: int, vehicle_id: int, data: VehicleUpda
 def delete_vehicle(db: Session, user_id: int, vehicle_id: int, force: bool = False) -> None:
     """Elimina un vehículo del usuario.
 
-    Si tiene tickets o ingresos asociados responde 409, salvo que se indique force. Con force,
-    el vehículo se borra y sus tickets e ingresos se conservan sin vehículo (lo hacen las
-    claves foráneas, definidas con ON DELETE SET NULL).
+    Si tiene tickets, ingresos o lecturas de km asociados responde 409, salvo que se indique
+    force. Con force, el vehículo se borra, sus tickets e ingresos se conservan sin vehículo
+    (ON DELETE SET NULL) y sus lecturas de km se borran con él (ON DELETE CASCADE).
     """
     vehicle = get_vehicle_or_404(db, vehicle_id, user_id)
 
     if not force and _has_related_data(db, vehicle.id):
         raise ApiError(
             status_code=409,
-            detail="El vehículo tiene tickets o ingresos asociados. Confirma el borrado para "
-            "eliminarlo: sus tickets e ingresos se conservarán sin vehículo",
+            detail="El vehículo tiene tickets, ingresos o lecturas de km asociados. Confirma "
+            "el borrado para eliminarlo: sus tickets e ingresos se conservarán sin vehículo y "
+            "sus lecturas de km se borrarán",
             code="vehicle_has_related_data",
         )
 
@@ -83,7 +84,8 @@ def delete_vehicle(db: Session, user_id: int, vehicle_id: int, force: bool = Fal
 
 
 def _has_related_data(db: Session, vehicle_id: int) -> bool:
-    """Indica si el vehículo tiene tickets o ingresos asociados."""
+    """Indica si el vehículo tiene tickets, ingresos o lecturas de km asociados."""
     has_tickets = exists().where(Ticket.vehicle_id == vehicle_id)
     has_incomes = exists().where(Income.vehicle_id == vehicle_id)
-    return bool(db.scalar(select(or_(has_tickets, has_incomes))))
+    has_readings = exists().where(OdometerReading.vehicle_id == vehicle_id)
+    return bool(db.scalar(select(or_(has_tickets, has_incomes, has_readings))))
