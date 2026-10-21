@@ -1,10 +1,31 @@
-from sqlalchemy import ColumnElement, select
+from collections.abc import Sequence
+
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.models import OdometerReading
 from app.schemas.odometer import OdometerReadingCreate
+from app.schemas.pagination import PageParams
 from app.services.vehicle_service import get_vehicle_or_404
+
+
+def list_readings(
+    db: Session, user_id: int, vehicle_id: int, params: PageParams
+) -> tuple[Sequence[OdometerReading], int]:
+    """Devuelve una página de lecturas de un vehículo del usuario (la más reciente primero)."""
+    vehicle = get_vehicle_or_404(db, vehicle_id, user_id)
+
+    condition = OdometerReading.vehicle_id == vehicle.id
+    total = db.scalar(select(func.count()).select_from(OdometerReading).where(condition)) or 0
+    query = (
+        select(OdometerReading)
+        .where(condition)
+        .order_by(OdometerReading.date.desc(), OdometerReading.odometer_km.desc())
+        .limit(params.size)
+        .offset((params.page - 1) * params.size)
+    )
+    return db.scalars(query).all(), total
 
 
 def create_reading(
@@ -19,6 +40,19 @@ def create_reading(
     db.commit()
     db.refresh(reading)
     return reading
+
+
+def delete_reading(db: Session, user_id: int, vehicle_id: int, reading_id: int) -> None:
+    """Elimina una lectura de un vehículo del usuario.
+
+    Quitar una lectura nunca rompe el orden de las demás, así que no hace falta validar nada.
+    """
+    vehicle = get_vehicle_or_404(db, vehicle_id, user_id)
+    reading = db.get(OdometerReading, reading_id)
+    if reading is None or reading.vehicle_id != vehicle.id:
+        raise ApiError(status_code=404, detail="Lectura no encontrada", code="reading_not_found")
+    db.delete(reading)
+    db.commit()
 
 
 def _ensure_in_sequence(db: Session, vehicle_id: int, data: OdometerReadingCreate) -> None:
