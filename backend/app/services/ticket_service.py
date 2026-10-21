@@ -1,6 +1,9 @@
+import logging
 from collections.abc import Sequence
 from decimal import Decimal
+from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -8,8 +11,10 @@ from app.core.errors import ApiError
 from app.models import Ticket, TicketStatus
 from app.schemas.ticket import TicketCreate, TicketFilters, TicketUpdate
 from app.services import image_storage
-from app.services.ocr.base import OcrProvider
+from app.services.ocr.base import ExtractedTicket, OcrProvider
 from app.services.vehicle_service import get_vehicle_or_404
+
+logger = logging.getLogger(__name__)
 
 # Campos obligatorios para confirmar un ticket, con su nombre para los mensajes de error
 REQUIRED_TO_CONFIRM = {
@@ -62,18 +67,46 @@ def create_ticket_from_image(db: Session, user_id: int, image: bytes, ocr: OcrPr
 
     # Primero se guarda la imagen: así se conserva aunque el OCR falle
     image_path = image_storage.save_image(image, mime_type)
-    extracted = ocr.extract(image, mime_type)
+    extracted = _extract_safely(ocr, image, mime_type)
 
     ticket = Ticket(
         user_id=user_id,
         status=TicketStatus.PENDING_REVIEW,
         image_path=image_path,
-        **extracted.model_dump(),
+        **_valid_fields(extracted),
     )
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+def _extract_safely(ocr: OcrProvider, image: bytes, mime_type: str) -> ExtractedTicket:
+    """Lee el ticket con el OCR. Si el proveedor falla, devuelve un ticket vacío.
+
+    Se captura cualquier error (red, tiempo de espera, respuesta ilegible...) porque un
+    fallo del OCR NUNCA debe impedir al usuario guardar su ticket.
+    """
+    try:
+        return ocr.extract(image, mime_type)
+    except Exception:
+        logger.warning("Fallo del proveedor OCR; el ticket se crea vacío", exc_info=True)
+        return ExtractedTicket()
+
+
+def _valid_fields(extracted: ExtractedTicket) -> dict[str, Any]:
+    """Devuelve los datos leídos por el OCR, vaciando los que no cumplen las reglas del ticket.
+
+    Se validan con las mismas reglas que el alta manual (TicketCreate): categoría existente,
+    importes no negativos con dos decimales como máximo, establecimiento de 1 a 100 caracteres.
+    """
+    data = extracted.model_dump()
+    try:
+        return TicketCreate(**data).model_dump()
+    except ValidationError as error:
+        for invalid in error.errors():
+            data[invalid["loc"][0]] = None
+        return TicketCreate(**data).model_dump()
 
 
 def list_tickets(db: Session, user_id: int, filters: TicketFilters) -> tuple[Sequence[Ticket], int]:

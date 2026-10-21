@@ -4,8 +4,11 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
+from app.api.deps import get_ocr_provider
 from app.core.config import settings
+from app.main import app
 from app.services.image_storage import MAX_IMAGE_SIZE
+from app.services.ocr.base import ExtractedTicket
 
 UPLOAD_URL = "/api/v1/tickets/upload"
 TICKETS_URL = "/api/v1/tickets"
@@ -142,6 +145,116 @@ def test_uploaded_ticket_is_only_visible_to_its_owner(
 def test_uploaded_ticket_can_be_confirmed(client: TestClient, auth_headers: dict[str, str]) -> None:
     ticket_id = upload(client, auth_headers).json()["id"]
 
+    response = client.post(f"{TICKETS_URL}/{ticket_id}/confirm", headers=auth_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+
+
+# --- Tolerancia a fallos del OCR ---
+
+
+class FailingOcrProvider:
+    """Proveedor que siempre falla, como un servicio caído o sin conexión."""
+
+    def extract(self, image: bytes, mime_type: str) -> ExtractedTicket:
+        raise TimeoutError("El proveedor no responde")
+
+
+class FixedOcrProvider:
+    """Proveedor que devuelve los datos indicados, aunque sean incorrectos."""
+
+    def __init__(self, extracted: ExtractedTicket) -> None:
+        self.extracted = extracted
+
+    def extract(self, image: bytes, mime_type: str) -> ExtractedTicket:
+        return self.extracted
+
+
+def use_ocr(provider: object) -> None:
+    """Hace que la API use este proveedor OCR en lugar del simulado (lo deshace `client`)."""
+    app.dependency_overrides[get_ocr_provider] = lambda: provider
+
+
+def test_ocr_failure_still_creates_empty_ticket_with_image(
+    client: TestClient, auth_headers: dict[str, str], images_dir: Path
+) -> None:
+    use_ocr(FailingOcrProvider())
+
+    response = upload(client, auth_headers)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "pending_review"
+    for field in ("date", "vendor", "category", "net_amount", "vat", "total"):
+        assert body[field] is None
+    assert len(list(images_dir.iterdir())) == 1
+
+
+def test_ocr_partial_read_keeps_what_was_read(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    use_ocr(FixedOcrProvider(ExtractedTicket(total="50.00")))
+
+    body = upload(client, auth_headers).json()
+
+    assert body["total"] == "50.00"
+    assert body["vendor"] is None
+    assert body["date"] is None
+
+
+def test_ocr_unknown_category_is_left_empty(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    use_ocr(FixedOcrProvider(ExtractedTicket(vendor="Repsol", category="gasolina")))
+
+    body = upload(client, auth_headers).json()
+
+    assert body["category"] is None
+    assert body["vendor"] == "Repsol"
+
+
+@pytest.mark.parametrize("amount", ["-5.00", "12.345", "123456789.00"])
+def test_ocr_invalid_amount_is_left_empty(
+    client: TestClient, auth_headers: dict[str, str], amount: str
+) -> None:
+    # Negativo, con más de dos decimales y demasiado grande para la columna
+    use_ocr(FixedOcrProvider(ExtractedTicket(net_amount=amount, vat="8.68", total="50.00")))
+
+    body = upload(client, auth_headers).json()
+
+    assert body["net_amount"] is None
+    assert body["vat"] == "8.68"
+    assert body["total"] == "50.00"
+
+
+@pytest.mark.parametrize("vendor", ["", "x" * 101])
+def test_ocr_invalid_vendor_is_left_empty(
+    client: TestClient, auth_headers: dict[str, str], vendor: str
+) -> None:
+    use_ocr(FixedOcrProvider(ExtractedTicket(vendor=vendor, total="50.00")))
+
+    body = upload(client, auth_headers).json()
+
+    assert body["vendor"] is None
+    assert body["total"] == "50.00"
+
+
+def test_ticket_from_failed_ocr_can_be_completed_and_confirmed(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    use_ocr(FailingOcrProvider())
+    ticket_id = upload(client, auth_headers).json()["id"]
+    reviewed = {
+        "date": "2026-10-05",
+        "vendor": "Gasolinera Sol",
+        "category": "combustible",
+        "net_amount": "41.32",
+        "vat": "8.68",
+        "total": "50.00",
+    }
+
+    client.put(f"{TICKETS_URL}/{ticket_id}", json=reviewed, headers=auth_headers)
     response = client.post(f"{TICKETS_URL}/{ticket_id}/confirm", headers=auth_headers)
 
     assert response.status_code == 200
