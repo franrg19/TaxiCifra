@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.pagination import PageParams
+
 
 class IncomeCreate(BaseModel):
     """Datos de entrada para registrar un ingreso. Fecha e importe son obligatorios."""
@@ -10,6 +12,18 @@ class IncomeCreate(BaseModel):
     date: dt.date
     amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     description: str | None = Field(default=None, min_length=1, max_length=255)
+    vehicle_id: int | None = None
+
+
+class IncomeUpdate(IncomeCreate):
+    """Datos de entrada para editar un ingreso. Se reemplazan todos los campos."""
+
+
+class IncomeFilters(PageParams):
+    """Parámetros de consulta del listado de ingresos: paginación y filtros opcionales."""
+
+    date_from: dt.date | None = None
+    date_to: dt.date | None = None
     vehicle_id: int | None = None
 
 

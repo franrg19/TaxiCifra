@@ -5,6 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import TicketCategory, TicketStatus
+from app.schemas.pagination import PageParams
 
 # Importe en euros: no negativo y con dos decimales como máximo
 Amount = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=2)]
@@ -26,11 +27,9 @@ class TicketUpdate(TicketCreate):
     """Datos de entrada para editar un ticket. Se reemplazan todos los campos."""
 
 
-class TicketFilters(BaseModel):
+class TicketFilters(PageParams):
     """Parámetros de consulta del listado de tickets: paginación y filtros opcionales."""
 
-    page: int = Field(default=1, ge=1)
-    size: int = Field(default=20, ge=1, le=100)
     date_from: dt.date | None = None
     date_to: dt.date | None = None
     category: TicketCategory | None = None
