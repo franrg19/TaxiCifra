@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Income, Ticket
+from app.models import Income, OdometerReading, Ticket
 
 VEHICLES_URL = "/api/v1/vehicles"
 TICKETS_URL = "/api/v1/tickets"
@@ -265,3 +265,33 @@ def test_force_delete_keeps_incomes_without_vehicle(
     assert response.status_code == 204
     remaining = db.execute(select(Income.id, Income.vehicle_id)).all()
     assert remaining == [(income_id, None)]
+
+
+def add_reading_to_vehicle(client: TestClient, headers: dict[str, str], vehicle_id: int) -> None:
+    """Registra una lectura de km del vehículo."""
+    reading = {"date": "2026-10-20", "odometer_km": 150000}
+    client.post(f"{VEHICLES_URL}/{vehicle_id}/odometer", json=reading, headers=headers)
+
+
+def test_delete_vehicle_with_readings_returns_409_and_keeps_it(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    add_reading_to_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}", headers=auth_headers)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "vehicle_has_related_data"
+
+
+def test_force_delete_removes_vehicle_readings(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    vehicle_id = create_vehicle(client, auth_headers)
+    add_reading_to_vehicle(client, auth_headers, vehicle_id)
+
+    response = client.delete(f"{VEHICLES_URL}/{vehicle_id}?force=true", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert db.scalars(select(OdometerReading)).all() == []
