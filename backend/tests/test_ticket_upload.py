@@ -338,3 +338,55 @@ def test_get_image_requires_authentication(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["code"] == "not_authenticated"
+
+
+# --- Borrar el ticket borra la imagen ---
+
+
+def test_delete_ticket_removes_its_image(
+    client: TestClient, auth_headers: dict[str, str], images_dir: Path
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+
+    response = client.delete(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+    assert list(images_dir.iterdir()) == []
+
+
+def test_delete_ticket_only_removes_its_own_image(
+    client: TestClient, auth_headers: dict[str, str], images_dir: Path
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+    kept_id = upload(client, auth_headers).json()["id"]
+
+    client.delete(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers)
+
+    assert len(list(images_dir.iterdir())) == 1
+    assert client.get(image_url(kept_id), headers=auth_headers).status_code == 200
+
+
+def test_delete_ticket_whose_image_is_already_missing(
+    client: TestClient, auth_headers: dict[str, str], images_dir: Path
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+    for file in images_dir.iterdir():
+        file.unlink()
+
+    response = client.delete(f"{TICKETS_URL}/{ticket_id}", headers=auth_headers)
+
+    assert response.status_code == 204
+
+
+def test_delete_ticket_of_another_user_keeps_its_image(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    other_auth_headers: dict[str, str],
+    images_dir: Path,
+) -> None:
+    ticket_id = upload(client, auth_headers).json()["id"]
+
+    response = client.delete(f"{TICKETS_URL}/{ticket_id}", headers=other_auth_headers)
+
+    assert response.status_code == 404
+    assert len(list(images_dir.iterdir())) == 1

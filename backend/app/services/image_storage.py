@@ -34,3 +34,8 @@ def save_image(data: bytes, mime_type: str) -> str:
 def image_location(filename: str) -> Path:
     """Devuelve la ruta en disco de una imagen guardada a partir de su nombre."""
     return Path(settings.images_dir) / filename
+
+
+def delete_image(filename: str) -> None:
+    """Borra una imagen guardada. Si ya no existe, no hace nada."""
+    image_location(filename).unlink(missing_ok=True)

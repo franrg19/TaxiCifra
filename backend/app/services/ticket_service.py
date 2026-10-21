@@ -210,7 +210,11 @@ def _euros(amount: Decimal) -> str:
 
 
 def delete_ticket(db: Session, user_id: int, ticket_id: int) -> None:
-    """Elimina un ticket del usuario."""
+    """Elimina un ticket del usuario y, si tiene, su foto."""
     ticket = get_ticket_or_404(db, ticket_id, user_id)
+    image_path = ticket.image_path
     db.delete(ticket)
     db.commit()
+    # La foto se borra después del commit: si fallara la base de datos, el ticket seguiría con ella
+    if image_path:
+        image_storage.delete_image(image_path)
