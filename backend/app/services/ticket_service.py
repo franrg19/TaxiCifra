@@ -1,13 +1,21 @@
+import logging
 from collections.abc import Sequence
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ApiError
 from app.models import Ticket, TicketStatus
 from app.schemas.ticket import TicketCreate, TicketFilters, TicketUpdate
+from app.services import image_storage
+from app.services.ocr.base import ExtractedTicket, OcrProvider
 from app.services.vehicle_service import get_vehicle_or_404
+
+logger = logging.getLogger(__name__)
 
 # Campos obligatorios para confirmar un ticket, con su nombre para los mensajes de error
 REQUIRED_TO_CONFIRM = {
@@ -41,6 +49,74 @@ def create_ticket(db: Session, user_id: int, data: TicketCreate) -> Ticket:
     db.commit()
     db.refresh(ticket)
     return ticket
+
+
+def create_ticket_from_image(db: Session, user_id: int, image: bytes, ocr: OcrProvider) -> Ticket:
+    """Crea un ticket a partir de su foto: guarda la imagen y rellena los datos con el OCR.
+
+    El ticket nace pendiente de revisión: lo leído por el OCR nunca es definitivo.
+    """
+    mime_type = image_storage.detect_mime_type(image)
+    if mime_type is None:
+        raise ApiError(
+            status_code=415, detail="La imagen debe ser JPG o PNG", code="unsupported_image_type"
+        )
+    if len(image) > image_storage.MAX_IMAGE_SIZE:
+        raise ApiError(
+            status_code=413, detail="La imagen no puede superar 5 MB", code="image_too_large"
+        )
+
+    # Primero se guarda la imagen: así se conserva aunque el OCR falle
+    image_path = image_storage.save_image(image, mime_type)
+    extracted = _extract_safely(ocr, image, mime_type)
+
+    ticket = Ticket(
+        user_id=user_id,
+        status=TicketStatus.PENDING_REVIEW,
+        image_path=image_path,
+        **_valid_fields(extracted),
+    )
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+
+def _extract_safely(ocr: OcrProvider, image: bytes, mime_type: str) -> ExtractedTicket:
+    """Lee el ticket con el OCR. Si el proveedor falla, devuelve un ticket vacío.
+
+    Se captura cualquier error (red, tiempo de espera, respuesta ilegible...) porque un
+    fallo del OCR NUNCA debe impedir al usuario guardar su ticket.
+    """
+    try:
+        return ocr.extract(image, mime_type)
+    except Exception:
+        logger.warning("Fallo del proveedor OCR; el ticket se crea vacío", exc_info=True)
+        return ExtractedTicket()
+
+
+def _valid_fields(extracted: ExtractedTicket) -> dict[str, Any]:
+    """Devuelve los datos leídos por el OCR, vaciando los que no cumplen las reglas del ticket.
+
+    Se validan con las mismas reglas que el alta manual (TicketCreate): categoría existente,
+    importes no negativos con dos decimales como máximo, establecimiento de 1 a 100 caracteres.
+    """
+    data = extracted.model_dump()
+    try:
+        return TicketCreate(**data).model_dump()
+    except ValidationError as error:
+        for invalid in error.errors():
+            data[invalid["loc"][0]] = None
+        return TicketCreate(**data).model_dump()
+
+
+def get_ticket_image(db: Session, user_id: int, ticket_id: int) -> Path:
+    """Devuelve la ruta en disco de la foto de un ticket del usuario, o responde 404."""
+    ticket = get_ticket_or_404(db, ticket_id, user_id)
+    path = image_storage.image_location(ticket.image_path) if ticket.image_path else None
+    if path is None or not path.is_file():
+        raise ApiError(status_code=404, detail="El ticket no tiene imagen", code="image_not_found")
+    return path
 
 
 def list_tickets(db: Session, user_id: int, filters: TicketFilters) -> tuple[Sequence[Ticket], int]:
@@ -134,7 +210,11 @@ def _euros(amount: Decimal) -> str:
 
 
 def delete_ticket(db: Session, user_id: int, ticket_id: int) -> None:
-    """Elimina un ticket del usuario."""
+    """Elimina un ticket del usuario y, si tiene, su foto."""
     ticket = get_ticket_or_404(db, ticket_id, user_id)
+    image_path = ticket.image_path
     db.delete(ticket)
     db.commit()
+    # La foto se borra después del commit: si fallara la base de datos, el ticket seguiría con ella
+    if image_path:
+        image_storage.delete_image(image_path)

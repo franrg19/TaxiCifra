@@ -65,7 +65,7 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **NO uses:** SQLAlchemy async, Django, Flask, ORMs alternativos, librerías de estado global pesadas en el frontend, ni ninguna dependencia que no esté aquí sin preguntar antes.
 
-**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
+**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
 
 ## 5. Arquitectura
 
@@ -203,6 +203,7 @@ GET    /tickets          ?page&size&date_from&date_to&category&status&vehicle_id
 POST   /tickets          (creación manual)
 POST   /tickets/upload   (multipart: imagen + OCR síncrono)
 GET    /tickets/{id}
+GET    /tickets/{id}/image   (foto del ticket, solo su dueño)
 PUT    /tickets/{id}
 DELETE /tickets/{id}
 POST   /tickets/{id}/confirm
@@ -348,6 +349,9 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Listado de tickets | Respuesta paginada con la forma `{"items", "total", "page", "size"}` (esquema genérico `Page[T]`, reutilizable en ingresos). Orden: fecha descendente, sin fecha al final. `page` ≥ 1 y `size` entre 1 y 100; fuera de rango → `422`. Fechas inclusivas. Un `vehicle_id` ajeno en el filtro devuelve lista vacía |
 | Edición de tickets | `PUT /tickets/{id}` reemplaza todos los campos y deja SIEMPRE el ticket en `pending_review`, aunque estuviera confirmado. La edición no valida importes: solo lo hace la confirmación. Recurso inexistente o ajeno → `404` (`ticket_not_found`) |
 | Confirmación de tickets | `POST /tickets/{id}/confirm` sin cuerpo; confirma el ticket tal como está guardado. Si faltan campos → `422` (`ticket_incomplete`) indicando TODOS los que faltan; si la diferencia entre `net_amount + vat` y `total` supera 0,02 € → `422` (`amounts_mismatch`) con los importes. Si falla, el ticket sigue en `pending_review`. Confirmar un ticket ya confirmado devuelve `200` (idempotente) |
+| Subida de tickets por foto | Tipo real por los primeros bytes (firma de JPG o PNG), no por la extensión: si no es JPG ni PNG → `415` (`unsupported_image_type`); más de 5 MB → `413` (`image_too_large`). La imagen se guarda con un nombre aleatorio (`uuid4` + extensión), nunca el del usuario, y en BD solo va ese nombre (`image_path`). Se guarda ANTES de llamar al OCR. La subida no lleva `vehicle_id` (se asigna al revisar con `PUT`). `ocr_text` queda vacío hasta elegir el proveedor real. Librería `python-multipart` aprobada para recibir ficheros |
+| Tolerancia a fallos del OCR | Cualquier error del proveedor se registra en el log y el ticket se crea con los campos vacíos. Lo que devuelve el OCR se valida con las mismas reglas que el alta manual (`TicketCreate`): los campos inválidos (categoría inexistente, importe negativo, con más de dos decimales o demasiado grande, `vendor` vacío o de más de 100 caracteres) se dejan vacíos y se conserva el resto. El proveedor se obtiene con `get_ocr_provider()` en `api/deps.py` (hoy `FakeOcrProvider`) |
+| Imagen de un ticket | `GET /tickets/{id}/image` devuelve el fichero solo a su dueño (ticket ajeno o inexistente → `404` `ticket_not_found`; ticket sin foto o fichero ausente en disco → `404` `image_not_found`). La carpeta de imágenes NO se publica como estáticos. `DELETE /tickets/{id}` borra también la foto, después del `commit` (RGPD y sin ficheros huérfanos) |
 
 ### Abiertas
 
