@@ -65,7 +65,7 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **NO uses:** SQLAlchemy async, Django, Flask, ORMs alternativos, librerías de estado global pesadas en el frontend, ni ninguna dependencia que no esté aquí sin preguntar antes.
 
-**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
+**Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `anthropic` (SDK del proveedor OCR/IA), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
 
 ## 5. Arquitectura
 
@@ -108,7 +108,7 @@ backend/app/
 │   └── ocr/
 │       ├── base.py        # interfaz OcrProvider + ExtractedTicket
 │       ├── fake.py        # FakeOcrProvider
-│       └── <proveedor>.py # proveedor real (se decide en la semana 3)
+│       └── claude.py      # ClaudeOcrProvider (proveedor real, Anthropic)
 └── db/
     ├── database.py
     └── migrations/
@@ -252,7 +252,7 @@ class OcrProvider(Protocol):
 ```
 
 - Se desarrolla PRIMERO con `FakeOcrProvider` (datos fijos). Los tests usan SIEMPRE el fake.
-- El proveedor real se decide en la **semana 3**, tras probar 10-15 fotos reales. Hasta entonces NO integres ninguno.
+- El proveedor real es **Claude (Anthropic)**, elegido tras evaluar con fotos reales (ver sección 15). Se usa solo si hay `ANTHROPIC_API_KEY`; si no, `FakeOcrProvider`.
 - La clave de API va en variable de entorno. NUNCA en el código ni en el repositorio.
 
 ## 10. Seguridad (obligatorio)
@@ -326,7 +326,7 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Paginación                                      | `size` por defecto 20, máximo 100                                                    |
 | Tolerancia de `net + vat ≈ total`               | 0,02 €                                                                               |
 | Versión de Python                               | 3.12                                                                                 |
-| Proveedor OCR/IA real                           | Se decide en la semana 3. Hasta entonces NO integrar ninguno: usar `FakeOcrProvider` |
+| Proveedor OCR/IA real                           | Claude de Anthropic, modelo `claude-haiku-5-5` (configurable con `OCR_MODEL`). Elegido el 27/10/2026: Haiku 5.5, Sonnet 5.5 y Opus 5.5 acertaron los 6 campos en 6 tickets reales y Haiku era el más barato |
 
 ### Tomadas durante el desarrollo (aprobadas por Fran; NO las cambies)
 
@@ -350,11 +350,12 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Edición de tickets | `PUT /tickets/{id}` reemplaza todos los campos y deja SIEMPRE el ticket en `pending_review`, aunque estuviera confirmado. La edición no valida importes: solo lo hace la confirmación. Recurso inexistente o ajeno → `404` (`ticket_not_found`) |
 | Confirmación de tickets | `POST /tickets/{id}/confirm` sin cuerpo; confirma el ticket tal como está guardado. Si faltan campos → `422` (`ticket_incomplete`) indicando TODOS los que faltan; si la diferencia entre `net_amount + vat` y `total` supera 0,02 € → `422` (`amounts_mismatch`) con los importes. Si falla, el ticket sigue en `pending_review`. Confirmar un ticket ya confirmado devuelve `200` (idempotente) |
 | Subida de tickets por foto | Tipo real por los primeros bytes (firma de JPG o PNG), no por la extensión: si no es JPG ni PNG → `415` (`unsupported_image_type`); más de 5 MB → `413` (`image_too_large`). La imagen se guarda con un nombre aleatorio (`uuid4` + extensión), nunca el del usuario, y en BD solo va ese nombre (`image_path`). Se guarda ANTES de llamar al OCR. La subida no lleva `vehicle_id` (se asigna al revisar con `PUT`). `ocr_text` queda vacío hasta elegir el proveedor real. Librería `python-multipart` aprobada para recibir ficheros |
-| Tolerancia a fallos del OCR | Cualquier error del proveedor se registra en el log y el ticket se crea con los campos vacíos. Lo que devuelve el OCR se valida con las mismas reglas que el alta manual (`TicketCreate`): los campos inválidos (categoría inexistente, importe negativo, con más de dos decimales o demasiado grande, `vendor` vacío o de más de 100 caracteres) se dejan vacíos y se conserva el resto. El proveedor se obtiene con `get_ocr_provider()` en `api/deps.py` (hoy `FakeOcrProvider`) |
+| Tolerancia a fallos del OCR | Cualquier error del proveedor se registra en el log y el ticket se crea con los campos vacíos. Lo que devuelve el OCR se valida con las mismas reglas que el alta manual (`TicketCreate`): los campos inválidos (categoría inexistente, importe negativo, con más de dos decimales o demasiado grande, `vendor` vacío o de más de 100 caracteres) se dejan vacíos y se conserva el resto. El proveedor se obtiene con `get_ocr_provider()` en `api/deps.py` (ver "Integración del OCR real") |
 | Imagen de un ticket | `GET /tickets/{id}/image` devuelve el fichero solo a su dueño (ticket ajeno o inexistente → `404` `ticket_not_found`; ticket sin foto o fichero ausente en disco → `404` `image_not_found`). La carpeta de imágenes NO se publica como estáticos. `DELETE /tickets/{id}` borra también la foto, después del `commit` (RGPD y sin ficheros huérfanos) |
 | Ingresos | `date` y `amount` obligatorios; `amount` > 0 con dos decimales como máximo; `description` opcional, de 1 a 255 caracteres. `vehicle_id` ajeno → `404`. Listado igual que el de tickets (`Page[T]`, orden por fecha descendente, fechas inclusivas, vehículo ajeno → lista vacía). `PUT` reemplaza todos los campos con las mismas reglas que el alta. Sin `GET /incomes/{id}` (no está en la sección 8). Ingreso inexistente o ajeno → `404` (`income_not_found`). La paginación (`page`, `size`) se define una sola vez en `PageParams` |
 | Kilometraje | `date` y `odometer_km` obligatorios; `odometer_km` entero de 0 a 9.999.999. Una lectura nueva debe ser ≥ la última de los días anteriores y ≤ la primera de los días posteriores (se puede añadir una lectura olvidada en el pasado); si no → `422` (`odometer_decreasing`) citando la lectura con la que choca. Se permiten varias lecturas el mismo día (se ordenan por km). Listado paginado (`PageParams`) sin filtros, por fecha y km descendentes. Vehículo ajeno → `404` (`vehicle_not_found`); lectura inexistente o de otro vehículo → `404` (`reading_not_found`). Borrar una lectura no requiere validación |
 | Dashboard | Filtros opcionales: sin `date_from`/`date_to` se usa todo el histórico; un `vehicle_id` ajeno da ceros (no `404`). `summary` devuelve `expenses`, `incomes`, `profit`, `ticket_count` (solo tickets `confirmed`), `km_driven` y `cost_per_km`. Km = suma por vehículo de `MAX(km) - MIN(km)` del periodo (equivale a última − primera porque las lecturas nunca bajan), solo vehículos con ≥ 2 lecturas; sin ninguno → `km_driven = null`. `cost_per_km` con 3 decimales (`ROUND_HALF_UP`); `null` si `km_driven` es `null` o 0. Importes con 2 decimales. `by-category`: lista sin paginar de `{category, total}` con gasto confirmado, de mayor a menor. `monthly`: siempre los 12 meses `{month, expenses, incomes, profit}`; `year` opcional (por defecto el actual), de 2000 a 2100. Sumas y agrupaciones en SQL; en Python solo la resta del beneficio, la división del coste por km y el relleno de meses sin datos |
+| Integración del OCR real | `ClaudeOcrProvider` (`services/ocr/claude.py`) recibe el cliente de `anthropic` ya creado. Una sola llamada a la API de mensajes con la imagen en base64, `effort: low` y salida estructurada (esquema JSON con los 6 campos; la categoría restringida a las 9 válidas o `null`). Las instrucciones y el esquema son los mismos que se evaluaron. Una respuesta incompleta o rechazada lanza un error (lo recoge la tolerancia a fallos); los campos ilegibles se vacían y se conserva el resto. `get_ocr_provider()` crea el proveedor una sola vez: con `ANTHROPIC_API_KEY` usa Claude (timeout 30 s, 1 reintento); sin clave, `FakeOcrProvider` con un aviso en el log. `conftest.py` fuerza `FakeOcrProvider` en todos los tests. `ocr_text` sigue vacío (el modelo devuelve directamente los campos) |
 
 ### Abiertas
 
