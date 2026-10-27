@@ -5,10 +5,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, make_url, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_ocr_provider
 from app.core.config import settings
 from app.db.database import Base
 from app.main import app
+from app.services.ocr.fake import FakeOcrProvider
 
 
 @pytest.fixture(scope="session")
@@ -50,6 +51,8 @@ def db(engine: Engine) -> Generator[Session, None, None]:
 def client(db: Session) -> Generator[TestClient, None, None]:
     """Cliente HTTP cuya API usa la sesión de test en lugar de la real."""
     app.dependency_overrides[get_db] = lambda: db
+    # Los tests NUNCA llaman a un proveedor OCR real, aunque haya clave en el .env
+    app.dependency_overrides[get_ocr_provider] = FakeOcrProvider
     yield TestClient(app)
     app.dependency_overrides.clear()
 

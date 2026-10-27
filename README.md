@@ -8,6 +8,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16
 - **Seguridad:** contraseñas con argon2 y autenticación con JWT
+- **OCR/IA de tickets:** Claude Haiku 5.5 (API de Anthropic), con salidas estructuradas
 - **Frontend (pendiente):** React, TypeScript y Tailwind CSS
 - **Entorno:** Docker Compose, pytest y ruff
 
@@ -17,7 +18,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | --- | --- | --- |
 | Autenticación (registro y login) | Hecho | Pendiente |
 | Vehículos | Hecho | Pendiente |
-| Tickets y OCR | En curso (gestión manual, confirmación y subida de foto con OCR simulado; falta el proveedor real) | Pendiente |
+| Tickets y OCR | Hecho (lectura de tickets con Claude; sin clave, OCR simulado) | Pendiente |
 | Ingresos | Hecho | Pendiente |
 | Kilometraje | Hecho | Pendiente |
 | Dashboard | Hecho | Pendiente |
@@ -66,6 +67,17 @@ docker compose up --build
 - Documentación Swagger: http://localhost:8000/docs
 
 Al arrancar, el backend aplica automáticamente las migraciones pendientes (`alembic upgrade head`).
+
+### Lectura de tickets (OCR/IA)
+
+Las fotos de los tickets se leen con un modelo de IA de Anthropic. Para activarlo, pon tu clave en `.env`:
+
+```bash
+ANTHROPIC_API_KEY=tu-clave        # se crea en https://console.anthropic.com
+OCR_MODEL=claude-haiku-5-5       # opcional: otro modelo de Claude con visión
+```
+
+Sin clave, la aplicación funciona igual pero usa un **lector simulado** que devuelve siempre el mismo ticket (útil para probarla sin cuenta de Anthropic). Los tests usan siempre el lector simulado y nunca llaman a la API.
 
 ## Probar la API desde Swagger
 

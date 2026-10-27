@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     images_dir: str = "uploads"
     jwt_secret: str
     jwt_expire_hours: int = 24
+    # Sin clave de Anthropic se usa el proveedor OCR simulado
+    anthropic_api_key: str | None = None
+    ocr_model: str = "claude-haiku-5-5"
 
 
 settings = Settings()
