@@ -1,12 +1,20 @@
+import datetime as dt
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import ColumnElement, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from app.models import Income, OdometerReading, Ticket, TicketStatus
-from app.schemas.dashboard import DashboardFilters, DashboardSummary
+from app.schemas.dashboard import (
+    CategoryExpense,
+    DashboardFilters,
+    DashboardSummary,
+    MonthlyFilters,
+    MonthlyTotals,
+)
 
 CENTS = Decimal("0.01")
+ZERO = Decimal("0.00")
 # El coste por km de un taxi ronda los céntimos: se da con tres decimales (0,127 €/km)
 COST_PER_KM_PRECISION = Decimal("0.001")
 
@@ -25,6 +33,64 @@ def get_summary(db: Session, user_id: int, filters: DashboardFilters) -> Dashboa
         km_driven=km_driven,
         cost_per_km=_cost_per_km(expenses, km_driven),
     )
+
+
+def get_by_category(db: Session, user_id: int, filters: DashboardFilters) -> list[CategoryExpense]:
+    """Gasto confirmado por categoría, de mayor a menor. Solo aparecen las que tienen gasto."""
+    total = func.sum(Ticket.total)
+    query = (
+        select(Ticket.category, total)
+        .where(Ticket.status == TicketStatus.CONFIRMED, *_conditions(Ticket, user_id, filters))
+        .group_by(Ticket.category)
+        .order_by(total.desc(), Ticket.category)
+    )
+    return [
+        CategoryExpense(category=category, total=amount.quantize(CENTS))
+        for category, amount in db.execute(query)
+    ]
+
+
+def get_monthly(db: Session, user_id: int, filters: MonthlyFilters) -> list[MonthlyTotals]:
+    """Gastos confirmados, ingresos y beneficio de cada mes del año (siempre los 12 meses)."""
+    year = DashboardFilters(
+        date_from=dt.date(filters.year, 1, 1),
+        date_to=dt.date(filters.year, 12, 31),
+        vehicle_id=filters.vehicle_id,
+    )
+    expenses = _sum_by_month(
+        db,
+        Ticket.total,
+        Ticket.date,
+        [Ticket.status == TicketStatus.CONFIRMED, *_conditions(Ticket, user_id, year)],
+    )
+    incomes = _sum_by_month(db, Income.amount, Income.date, _conditions(Income, user_id, year))
+
+    # SQL solo devuelve los meses con datos; los demás se completan a cero
+    months = []
+    for month in range(1, 13):
+        month_expenses = expenses.get(month, ZERO)
+        month_incomes = incomes.get(month, ZERO)
+        months.append(
+            MonthlyTotals(
+                month=month,
+                expenses=month_expenses,
+                incomes=month_incomes,
+                profit=month_incomes - month_expenses,
+            )
+        )
+    return months
+
+
+def _sum_by_month(
+    db: Session,
+    amount: InstrumentedAttribute[Decimal | None],
+    date: InstrumentedAttribute[dt.date | None],
+    conditions: list[ColumnElement[bool]],
+) -> dict[int, Decimal]:
+    """Suma de importes agrupada por mes: {número de mes: total}."""
+    month = func.extract("month", date)
+    query = select(month, func.sum(amount)).where(*conditions).group_by(month)
+    return {int(number): total.quantize(CENTS) for number, total in db.execute(query)}
 
 
 def _conditions(
