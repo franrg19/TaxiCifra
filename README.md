@@ -20,7 +20,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | Tickets y OCR | En curso (gestión manual, confirmación y subida de foto con OCR simulado; falta el proveedor real) | Pendiente |
 | Ingresos | Hecho | Pendiente |
 | Kilometraje | Hecho | Pendiente |
-| Dashboard | Pendiente | Pendiente |
+| Dashboard | Hecho | Pendiente |
 
 Endpoints disponibles (prefijo `/api/v1`):
 
@@ -47,6 +47,9 @@ Endpoints disponibles (prefijo `/api/v1`):
 | POST | `/incomes` | Registrar un ingreso (fecha e importe obligatorios) | Sí |
 | PUT | `/incomes/{id}` | Editar un ingreso | Sí |
 | DELETE | `/incomes/{id}` | Eliminar un ingreso | Sí |
+| GET | `/dashboard/summary` | Resumen del periodo: gastos confirmados, ingresos, beneficio, nº de tickets, km y coste por km | Sí |
+| GET | `/dashboard/by-category` | Gasto confirmado por categoría en un periodo, de mayor a menor | Sí |
+| GET | `/dashboard/monthly` | Gastos, ingresos y beneficio de los 12 meses de un año (por defecto, el actual) | Sí |
 
 ## Requisitos
 
