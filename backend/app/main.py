@@ -2,10 +2,12 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1 import auth, dashboard, incomes, odometer, tickets, vehicles
+from app.core.config import settings
 
 # Motivo en español por tipo de error de Pydantic (el resto: "valor no válido")
 VALIDATION_MESSAGES = {
@@ -24,6 +26,15 @@ VALIDATION_MESSAGES = {
 }
 
 app = FastAPI(title="Taxicifra API")
+
+# Solo el frontend puede llamar a la API desde un navegador. El token va en la cabecera
+# Authorization (no en cookies), así que no hacen falta credenciales CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_origin],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(vehicles.router, prefix="/api/v1")
