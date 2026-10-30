@@ -17,6 +17,11 @@ const FIELD_LABELS: Record<string, string> = {
   category: 'Categoría',
   status: 'Estado',
   vehicle_id: 'Vehículo',
+  date: 'Fecha',
+  vendor: 'Establecimiento',
+  net_amount: 'Base imponible',
+  vat: 'IVA',
+  total: 'Total',
 }
 
 /** Error devuelto por la API, con su mensaje en español y su código. */
@@ -50,6 +55,21 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  const response = await send(path, init)
+  if (response.status === 204) {
+    return undefined as T
+  }
+  return (await response.json()) as T
+}
+
+/** Descarga un fichero protegido. Un <img src> no podría, porque no envía el token. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const response = await send(path)
+  return response.blob()
+}
+
+/** Envía la petición con el token y convierte las respuestas de error en ApiError. */
+async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const token = tokenStorage.get()
   const headers = new Headers(init.headers)
   if (token) {
@@ -69,10 +89,7 @@ export async function apiRequest<T>(
     }
     throw new ApiError(response.status, await readErrorBody(response))
   }
-  if (response.status === 204) {
-    return undefined as T
-  }
-  return (await response.json()) as T
+  return response
 }
 
 async function readErrorBody(response: Response): Promise<ApiErrorBody> {

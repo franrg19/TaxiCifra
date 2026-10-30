@@ -59,16 +59,19 @@ export type TicketCategory =
 
 export type TicketStatus = 'pending_review' | 'confirmed'
 
-export interface Ticket {
-  id: number
+export interface TicketInput {
   vehicle_id: number | null
   date: string | null
   vendor: string | null
   category: TicketCategory | null
-  // Los importes llegan como texto para no perder precisión
+  // Los importes viajan como texto para no perder precisión
   net_amount: string | null
   vat: string | null
   total: string | null
+}
+
+export interface Ticket extends TicketInput {
+  id: number
   status: TicketStatus
   created_at: string
 }

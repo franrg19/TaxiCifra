@@ -5,6 +5,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { TicketReviewPage } from './pages/TicketReviewPage'
 import { TicketsPage } from './pages/TicketsPage'
 import { VehiclesPage } from './pages/VehiclesPage'
 
@@ -21,6 +22,7 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route index element={<HomePage />} />
               <Route path="/tickets" element={<TicketsPage />} />
+              <Route path="/tickets/:ticketId" element={<TicketReviewPage />} />
               <Route path="/vehicles" element={<VehiclesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

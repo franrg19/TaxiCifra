@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../api/client'
-import { CATEGORY_LABELS, listTickets, STATUS_LABELS } from '../api/tickets'
+import {
+  CATEGORY_LABELS,
+  createDraftTicket,
+  listTickets,
+  uploadTicket,
+} from '../api/tickets'
 import { listVehicles } from '../api/vehicles'
+import { Button } from '../components/Button'
 import { ErrorMessage } from '../components/ErrorMessage'
 import { Pagination } from '../components/Pagination'
 import { TicketFilters } from '../components/TicketFilters'
+import { TicketStatusBadge } from '../components/TicketStatusBadge'
 import { formatDate, formatEuros } from '../format'
 import type { Page, Ticket, Vehicle } from '../types/api'
 
@@ -16,15 +23,14 @@ interface LoadedPage {
   error: string | null
 }
 
-const STATUS_STYLES = {
-  pending_review: 'bg-amber-100 text-amber-800',
-  confirmed: 'bg-green-100 text-green-800',
-}
-
 export function TicketsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loaded, setLoaded] = useState<LoadedPage | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
 
   // La URL manda: cualquier cambio de filtros o de página produce una consulta nueva
   const query = searchParams.toString()
@@ -71,12 +77,67 @@ export function TicketsPage() {
     setSearchParams(next)
   }
 
+  async function handleFileChosen(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+    setActionError(null)
+    setUploading(true)
+    try {
+      const ticket = await uploadTicket(file)
+      navigate(`/tickets/${ticket.id}`)
+    } catch (err) {
+      setActionError(errorMessage(err))
+      setUploading(false)
+      // Se vacía para poder elegir de nuevo la misma foto
+      event.target.value = ''
+    }
+  }
+
+  async function handleAddManually() {
+    setActionError(null)
+    try {
+      const ticket = await createDraftTicket()
+      navigate(`/tickets/${ticket.id}`)
+    } catch (err) {
+      setActionError(errorMessage(err))
+    }
+  }
+
   const plates = new Map(vehicles.map(({ id, plate }) => [id, plate]))
   const tickets = loaded?.tickets ?? null
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Tickets</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Tickets</h1>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={uploading}
+            onClick={() => void handleAddManually()}
+          >
+            Añadir a mano
+          </Button>
+          <Button
+            disabled={uploading}
+            onClick={() => fileInput.current?.click()}
+          >
+            {uploading ? 'Leyendo ticket…' : 'Subir foto'}
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/jpeg,image/png"
+            aria-label="Foto del ticket"
+            className="hidden"
+            onChange={(event) => void handleFileChosen(event)}
+          />
+        </div>
+      </div>
+
+      <ErrorMessage message={actionError} />
 
       <TicketFilters
         values={searchParams}
@@ -104,35 +165,33 @@ export function TicketsPage() {
             className={`divide-y divide-slate-200 rounded-lg bg-white shadow ${loading ? 'opacity-50' : ''}`}
           >
             {tickets.items.map((ticket) => (
-              <li
-                key={ticket.id}
-                className="flex flex-wrap items-center justify-between gap-3 p-4"
-              >
-                <div>
-                  <p className="font-semibold">
-                    {ticket.vendor ?? 'Sin establecimiento'}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {ticket.date ? formatDate(ticket.date) : 'Sin fecha'}
-                    {' · '}
-                    {ticket.category
-                      ? CATEGORY_LABELS[ticket.category]
-                      : 'Sin categoría'}
-                    {ticket.vehicle_id !== null &&
-                      plates.has(ticket.vehicle_id) &&
-                      ` · ${plates.get(ticket.vehicle_id)}`}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">
-                    {ticket.total ? formatEuros(ticket.total) : '—'}
-                  </p>
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[ticket.status]}`}
-                  >
-                    {STATUS_LABELS[ticket.status]}
-                  </span>
-                </div>
+              <li key={ticket.id}>
+                <Link
+                  to={`/tickets/${ticket.id}`}
+                  className="flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-50"
+                >
+                  <div>
+                    <p className="font-semibold">
+                      {ticket.vendor ?? 'Sin establecimiento'}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {ticket.date ? formatDate(ticket.date) : 'Sin fecha'}
+                      {' · '}
+                      {ticket.category
+                        ? CATEGORY_LABELS[ticket.category]
+                        : 'Sin categoría'}
+                      {ticket.vehicle_id !== null &&
+                        plates.has(ticket.vehicle_id) &&
+                        ` · ${plates.get(ticket.vehicle_id)}`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">
+                      {ticket.total ? formatEuros(ticket.total) : '—'}
+                    </p>
+                    <TicketStatusBadge status={ticket.status} />
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
