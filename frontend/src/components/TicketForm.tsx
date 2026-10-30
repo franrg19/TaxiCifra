@@ -29,10 +29,20 @@ export function TicketForm({
   const [netAmount, setNetAmount] = useState(amountToInput(ticket.net_amount))
   const [vat, setVat] = useState(amountToInput(ticket.vat))
   const [total, setTotal] = useState(amountToInput(ticket.total))
-  const [vehicleId, setVehicleId] = useState(String(ticket.vehicle_id ?? ''))
+  // null = el usuario aún no ha tocado el desplegable
+  const [chosenVehicle, setChosenVehicle] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  // Con un solo vehículo se propone en los tickets pendientes. Es solo una sugerencia:
+  // el vehículo es opcional y elegir "Sin vehículo" se respeta
+  const suggested =
+    ticket.status === 'pending_review' && vehicles.length === 1
+      ? String(vehicles[0].id)
+      : ''
+  const vehicleId =
+    chosenVehicle ?? (String(ticket.vehicle_id ?? '') || suggested)
 
   function toInput(): TicketInput {
     return {
@@ -112,7 +122,7 @@ export function TicketForm({
           id="vehicle"
           label="Vehículo"
           value={vehicleId}
-          onChange={(event) => setVehicleId(event.target.value)}
+          onChange={(event) => setChosenVehicle(event.target.value)}
         >
           <option value="">Sin vehículo</option>
           {vehicles.map((vehicle) => (
