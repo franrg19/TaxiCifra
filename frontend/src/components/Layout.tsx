@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
+import logo from '../assets/logo-yellow-background.png'
 import { useAuth } from '../auth/useAuth'
 
 const NAV_ITEMS = [
@@ -15,8 +16,8 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="bg-amber-400 shadow">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <span className="text-xl font-bold">Taxicifra</span>
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-1">
+          <img src={logo} alt="Taxicifra" className="h-16 w-auto" />
           {isAuthenticated && (
             <>
               <nav className="flex gap-1">
