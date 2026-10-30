@@ -13,6 +13,7 @@ import { ErrorMessage } from '../components/ErrorMessage'
 import { Pagination } from '../components/Pagination'
 import { TicketFilters } from '../components/TicketFilters'
 import { TicketStatusBadge } from '../components/TicketStatusBadge'
+import { compressImage } from '../compressImage'
 import { formatDate, formatEuros } from '../format'
 import type { Page, Ticket, Vehicle } from '../types/api'
 
@@ -85,7 +86,7 @@ export function TicketsPage() {
     setActionError(null)
     setUploading(true)
     try {
-      const ticket = await uploadTicket(file)
+      const ticket = await uploadTicket(await compressImage(file))
       navigate(`/tickets/${ticket.id}`)
     } catch (err) {
       setActionError(errorMessage(err))

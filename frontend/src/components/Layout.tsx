@@ -4,7 +4,7 @@ import logo from '../assets/logo-yellow-background.png'
 import { useAuth } from '../auth/useAuth'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Inicio' },
+  { to: '/', label: 'Resumen' },
   { to: '/tickets', label: 'Tickets' },
   { to: '/incomes', label: 'Ingresos' },
   { to: '/odometer', label: 'Kilometraje' },

@@ -36,3 +36,13 @@ export function today(): string {
 export function formatKm(km: number): string {
   return `${String(km).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} km`
 }
+
+/** Primer día del mes en curso en formato AAAA-MM-DD. */
+export function firstDayOfMonth(): string {
+  return `${today().slice(0, 7)}-01`
+}
+
+/** Importe de un gráfico, que ya llega como número: solo sirve para mostrarlo. */
+export function euroAxisValue(value: number): string {
+  return value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+}

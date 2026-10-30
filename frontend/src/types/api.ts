@@ -100,3 +100,25 @@ export interface OdometerReading extends OdometerReadingInput {
   vehicle_id: number
   created_at: string
 }
+
+export interface DashboardSummary {
+  expenses: string
+  incomes: string
+  profit: string
+  ticket_count: number
+  // null significa "sin datos": no hay dos lecturas de km en el periodo
+  km_driven: number | null
+  cost_per_km: string | null
+}
+
+export interface CategoryExpense {
+  category: TicketCategory
+  total: string
+}
+
+export interface MonthlyTotals {
+  month: number
+  expenses: string
+  incomes: string
+  profit: string
+}
