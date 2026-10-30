@@ -11,6 +11,12 @@ const FIELD_LABELS: Record<string, string> = {
   plate: 'Matrícula',
   brand: 'Marca',
   model: 'Modelo',
+  page: 'Página',
+  date_from: 'Desde',
+  date_to: 'Hasta',
+  category: 'Categoría',
+  status: 'Estado',
+  vehicle_id: 'Vehículo',
 }
 
 /** Error devuelto por la API, con su mensaje en español y su código. */
