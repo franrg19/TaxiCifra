@@ -9,8 +9,8 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 - **Backend:** Python 3.12, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16
 - **Seguridad:** contraseñas con argon2 y autenticación con JWT
 - **OCR/IA de tickets:** Claude Haiku 5.5 (API de Anthropic), con salidas estructuradas
-- **Frontend (pendiente):** React, TypeScript y Tailwind CSS
-- **Entorno:** Docker Compose, pytest y ruff
+- **Frontend:** React 19, TypeScript (estricto), Tailwind CSS 4 y React Router, con Vite
+- **Entorno:** Docker Compose, pytest y ruff (backend); oxlint y Prettier (frontend)
 
 ## Estado actual
 
@@ -78,6 +78,28 @@ OCR_MODEL=claude-haiku-5-5       # opcional: otro modelo de Claude con visión
 ```
 
 Sin clave, la aplicación funciona igual pero usa un **lector simulado** que devuelve siempre el mismo ticket (útil para probarla sin cuenta de Anthropic). Los tests usan siempre el lector simulado y nunca llaman a la API.
+
+## Arrancar el frontend
+
+Necesita [Node.js](https://nodejs.org) 20 o superior y el backend arrancado con Docker.
+
+```bash
+cd frontend
+npm install        # solo la primera vez
+npm run dev
+```
+
+- Aplicación: http://localhost:5173
+
+En desarrollo, Vite reenvía las peticiones `/api` al backend (`localhost:8000`). Además, la API solo acepta llamadas de navegador desde el origen del frontend (CORS), configurable con la variable `FRONTEND_ORIGIN`.
+
+Comandos del frontend (dentro de `frontend/`):
+
+```bash
+npm run lint           # linter (oxlint)
+npm run format         # formatear con Prettier
+npm run build          # comprobar tipos y generar la versión de producción
+```
 
 ## Probar la API desde Swagger
 
