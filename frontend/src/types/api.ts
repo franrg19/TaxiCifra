@@ -26,3 +26,14 @@ export interface User {
   email: string
   created_at: string
 }
+
+export interface VehicleInput {
+  plate: string
+  brand: string
+  model: string
+}
+
+export interface Vehicle extends VehicleInput {
+  id: number
+  created_at: string
+}
