@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../api/client'
 import type { Vehicle, VehicleInput } from '../types/api'
 import { Button } from './Button'
+import { ErrorMessage } from './ErrorMessage'
 import { FormField } from './FormField'
 
 interface VehicleFormProps {
@@ -39,14 +40,7 @@ export function VehicleForm({ vehicle, onSubmit, onCancel }: VehicleFormProps) {
       <h2 className="text-lg font-semibold">
         {vehicle ? 'Editar vehículo' : 'Nuevo vehículo'}
       </h2>
-      {error && (
-        <p
-          role="alert"
-          className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-        >
-          {error}
-        </p>
-      )}
+      <ErrorMessage message={error} />
       <div className="grid gap-4 sm:grid-cols-3">
         <FormField
           id="plate"

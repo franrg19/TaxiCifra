@@ -3,6 +3,7 @@ import { useAuth } from '../auth/useAuth'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Inicio' },
+  { to: '/tickets', label: 'Tickets' },
   { to: '/vehicles', label: 'Vehículos' },
 ]
 

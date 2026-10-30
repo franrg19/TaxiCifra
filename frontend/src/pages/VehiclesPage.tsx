@@ -8,6 +8,7 @@ import {
 } from '../api/vehicles'
 import { Button } from '../components/Button'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { ErrorMessage } from '../components/ErrorMessage'
 import { VehicleForm } from '../components/VehicleForm'
 import type { Vehicle, VehicleInput } from '../types/api'
 
@@ -75,14 +76,7 @@ export function VehiclesPage() {
         )}
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-        >
-          {error}
-        </p>
-      )}
+      <ErrorMessage message={error} />
 
       {form.mode !== 'closed' && (
         <VehicleForm
