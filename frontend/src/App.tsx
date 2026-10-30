@@ -5,6 +5,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { HomePage } from './pages/HomePage'
 import { IncomesPage } from './pages/IncomesPage'
 import { LoginPage } from './pages/LoginPage'
+import { OdometerPage } from './pages/OdometerPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { TicketReviewPage } from './pages/TicketReviewPage'
 import { TicketsPage } from './pages/TicketsPage'
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/tickets" element={<TicketsPage />} />
               <Route path="/tickets/:ticketId" element={<TicketReviewPage />} />
               <Route path="/incomes" element={<IncomesPage />} />
+              <Route path="/odometer" element={<OdometerPage />} />
               <Route path="/vehicles" element={<VehiclesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

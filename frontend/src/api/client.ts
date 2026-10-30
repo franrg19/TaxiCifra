@@ -24,6 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
   total: 'Total',
   amount: 'Importe',
   description: 'Descripción',
+  odometer_km: 'Kilómetros',
 }
 
 /** Error devuelto por la API, con su mensaje en español y su código. */
