@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthProvider'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import { HomePage } from './pages/HomePage'
+import { IncomesPage } from './pages/IncomesPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { TicketReviewPage } from './pages/TicketReviewPage'
@@ -23,6 +24,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="/tickets" element={<TicketsPage />} />
               <Route path="/tickets/:ticketId" element={<TicketReviewPage />} />
+              <Route path="/incomes" element={<IncomesPage />} />
               <Route path="/vehicles" element={<VehiclesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

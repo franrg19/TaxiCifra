@@ -19,7 +19,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | Autenticación (registro y login) | Hecho | Hecho |
 | Vehículos | Hecho | Hecho |
 | Tickets y OCR | Hecho (lectura de tickets con Claude; sin clave, OCR simulado) | Hecho |
-| Ingresos | Hecho | Pendiente |
+| Ingresos | Hecho | Hecho |
 | Kilometraje | Hecho | Pendiente |
 | Dashboard | Hecho | Pendiente |
 

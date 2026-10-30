@@ -75,3 +75,17 @@ export interface Ticket extends TicketInput {
   status: TicketStatus
   created_at: string
 }
+
+export interface IncomeInput {
+  date: string
+  amount: string
+  description: string | null
+  vehicle_id: number
+}
+
+export interface Income extends Omit<IncomeInput, 'vehicle_id'> {
+  id: number
+  // Queda vacío si el vehículo se borró conservando sus ingresos
+  vehicle_id: number | null
+  created_at: string
+}
