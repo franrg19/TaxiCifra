@@ -67,6 +67,8 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `anthropic` (SDK del proveedor OCR/IA), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
 
+**Librerías concretas ya aprobadas (frontend):** `react-router` (navegación), `tailwindcss` (estilos), `oxlint` (linter) y `prettier` (formateo). Las peticiones a la API se hacen con `fetch` nativo y estado de React, sin librerías de datos.
+
 ## 5. Arquitectura
 
 Cliente-servidor con API REST. **Monolito modular.**
@@ -122,11 +124,12 @@ backend/app/
 - **Models**: solo definición de entidades.
 - **El proveedor OCR solo se usa a través de la interfaz `OcrProvider`.** Ningún service importa un proveedor concreto.
 
-### Estructura del frontend (PROVISIONAL, se fija en la semana 1)
+### Estructura del frontend
 
 ```text
 frontend/src/
 ├── api/          # cliente HTTP tipado hacia /api/v1
+├── auth/         # sesión compartida: AuthContext, AuthProvider, useAuth
 ├── components/
 ├── pages/        # login, vehículos, tickets, revisión de ticket, ingresos, kilometraje, dashboard
 └── types/
@@ -341,7 +344,7 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | `GET /vehicles`      | Sin paginación (devuelve todos los vehículos del usuario)                                                                                                                                                                                                    |
 | Borrado de vehículo | Con tickets, ingresos o lecturas de km asociados responde `409` (`vehicle_has_related_data`); con `?force=true` se borra, sus tickets e ingresos quedan con `vehicle_id = null` (`ON DELETE SET NULL`) y sus lecturas de km se borran (`ON DELETE CASCADE`). La comprobación es una sola consulta con `EXISTS` |
 | Tests del backend    | Se ejecutan en Docker contra una base de datos aparte (`<nombre>_test`), creada automáticamente; cada test se deshace con un rollback                                                                                                                        |
-| Endpoint `/auth/me`  | No existe. Se decidirá en la semana 6 si el frontend lo necesita                                                                                                                                                                                             |
+| Endpoint `/auth/me`  | No existe: el frontend no lo necesita, porque sabe si hay sesión por el token y no muestra datos del usuario                                                                                                                                                                                             |
 | Memoria              | Sigue la plantilla del centro: RFTP y casos de uso (no historias de usuario). El contrato de la API no se incluye en la memoria (lo documenta Swagger)                                                                                                       |
 | Planificación        | Inicio de auth (tabla `users` y registro) adelantado a la semana 1 a petición de Fran                                                                                                                                                                        |
 | Nombre del proyecto  | **Taxicifra** (antes TaxiGest; cambiado el 06/10/2026 porque ya existe una app con ese nombre para el mismo público). Solo cambia el nombre visible: la carpeta, la base de datos, el usuario de PostgreSQL y los nombres de Docker siguen siendo `taxigest` |
@@ -356,6 +359,9 @@ Trabaja siempre en el orden de las semanas. No adelantes módulos de semanas pos
 | Kilometraje | `date` y `odometer_km` obligatorios; `odometer_km` entero de 0 a 9.999.999. Una lectura nueva debe ser ≥ la última de los días anteriores y ≤ la primera de los días posteriores (se puede añadir una lectura olvidada en el pasado); si no → `422` (`odometer_decreasing`) citando la lectura con la que choca. Se permiten varias lecturas el mismo día (se ordenan por km). Listado paginado (`PageParams`) sin filtros, por fecha y km descendentes. Vehículo ajeno → `404` (`vehicle_not_found`); lectura inexistente o de otro vehículo → `404` (`reading_not_found`). Borrar una lectura no requiere validación |
 | Dashboard | Filtros opcionales: sin `date_from`/`date_to` se usa todo el histórico; un `vehicle_id` ajeno da ceros (no `404`). `summary` devuelve `expenses`, `incomes`, `profit`, `ticket_count` (solo tickets `confirmed`), `km_driven` y `cost_per_km`. Km = suma por vehículo de `MAX(km) - MIN(km)` del periodo (equivale a última − primera porque las lecturas nunca bajan), solo vehículos con ≥ 2 lecturas; sin ninguno → `km_driven = null`. `cost_per_km` con 3 decimales (`ROUND_HALF_UP`); `null` si `km_driven` es `null` o 0. Importes con 2 decimales. `by-category`: lista sin paginar de `{category, total}` con gasto confirmado, de mayor a menor. `monthly`: siempre los 12 meses `{month, expenses, incomes, profit}`; `year` opcional (por defecto el actual), de 2000 a 2100. Sumas y agrupaciones en SQL; en Python solo la resta del beneficio, la división del coste por km y el relleno de meses sin datos |
 | Integración del OCR real | `ClaudeOcrProvider` (`services/ocr/claude.py`) recibe el cliente de `anthropic` ya creado. Una sola llamada a la API de mensajes con la imagen en base64, `effort: low` y salida estructurada (esquema JSON con los 6 campos; la categoría restringida a las 9 válidas o `null`). Las instrucciones y el esquema son los mismos que se evaluaron. Una respuesta incompleta o rechazada lanza un error (lo recoge la tolerancia a fallos); los campos ilegibles se vacían y se conserva el resto. `get_ocr_provider()` crea el proveedor una sola vez: con `ANTHROPIC_API_KEY` usa Claude (timeout 30 s, 1 reintento); sin clave, `FakeOcrProvider` con un aviso en el log. `conftest.py` fuerza `FakeOcrProvider` en todos los tests. `ocr_text` sigue vacío (el modelo devuelve directamente los campos) |
+| Frontend: herramientas | Vite con TypeScript 7 en modo estricto, oxlint y Prettier (sin punto y coma, comillas simples), que es lo que trae la plantilla oficial de Vite. El backend usa ruff |
+| Frontend: conexión con la API | En desarrollo, el proxy de Vite reenvía `/api` a `localhost:8000`. Además, CORS en FastAPI admite un único origen (`FRONTEND_ORIGIN`, por defecto `http://localhost:5173`), sin credenciales porque el token va en la cabecera `Authorization` |
+| Frontend: sesión | El token JWT se guarda en `localStorage` para que la sesión dure la jornada. Riesgo XSS mitigado: React escapa lo que pinta, prohibido `dangerouslySetInnerHTML` y sin scripts de terceros. Se valoró una cookie `httpOnly` y queda como mejora futura. Un `401` a una petición con token borra la sesión y lleva al login. El registro inicia sesión automáticamente |
 
 ### Abiertas
 
@@ -363,9 +369,7 @@ Son de semanas posteriores y no bloquean nada ahora. Hasta que Fran las cierre, 
 
 | Tema                               | Propuesta por defecto                        |
 | ---------------------------------- | -------------------------------------------- |
-| Linter y formateo                  | ruff (backend), ESLint + Prettier (frontend) |
 | Librería de gráficos del dashboard | Recharts                                     |
-| Estructura del frontend            | La provisional de la sección 5               |
 
 ## 16. Prohibido
 
