@@ -20,7 +20,7 @@ Proyecto Intermodular de DAM. La especificación completa está en [AGENTS.md](A
 | Vehículos | Hecho | Hecho |
 | Tickets y OCR | Hecho (lectura de tickets con Claude; sin clave, OCR simulado) | Hecho |
 | Ingresos | Hecho | Hecho |
-| Kilometraje | Hecho | Pendiente |
+| Kilometraje | Hecho | Hecho |
 | Dashboard | Hecho | Pendiente |
 
 Endpoints disponibles (prefijo `/api/v1`):

@@ -89,3 +89,14 @@ export interface Income extends Omit<IncomeInput, 'vehicle_id'> {
   vehicle_id: number | null
   created_at: string
 }
+
+export interface OdometerReadingInput {
+  date: string
+  odometer_km: number
+}
+
+export interface OdometerReading extends OdometerReadingInput {
+  id: number
+  vehicle_id: number
+  created_at: string
+}

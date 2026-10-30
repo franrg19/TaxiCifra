@@ -31,3 +31,8 @@ export function today(): string {
   const day = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${month}-${day}`
 }
+
+/** 150000 → "150.000 km". */
+export function formatKm(km: number): string {
+  return `${String(km).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} km`
+}
