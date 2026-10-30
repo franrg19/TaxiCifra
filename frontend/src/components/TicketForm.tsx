@@ -1,15 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../api/client'
 import { CATEGORY_LABELS } from '../api/tickets'
-import { amountToInput, inputToAmount } from '../format'
+import { AMOUNT_PATTERN, amountToInput, inputToAmount } from '../format'
 import type { Ticket, TicketCategory, TicketInput, Vehicle } from '../types/api'
 import { Button } from './Button'
 import { ErrorMessage } from './ErrorMessage'
 import { FormField } from './FormField'
 import { SelectField } from './SelectField'
-
-// Admite "41,32" y "41.32", con dos decimales como máximo
-const AMOUNT_PATTERN = '[0-9]+([,.][0-9]{1,2})?'
 
 interface TicketFormProps {
   ticket: Ticket

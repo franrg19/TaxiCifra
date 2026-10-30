@@ -20,3 +20,14 @@ export function amountToInput(amount: string | null): string {
 export function inputToAmount(value: string): string | null {
   return value.trim().replace(',', '.') || null
 }
+
+/** Importe válido en un formulario: "41,32" o "41.32", con dos decimales como máximo. */
+export const AMOUNT_PATTERN = '[0-9]+([,.][0-9]{1,2})?'
+
+/** Fecha de hoy en formato AAAA-MM-DD, según el reloj del usuario. */
+export function today(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}

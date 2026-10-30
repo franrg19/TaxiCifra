@@ -22,6 +22,8 @@ const FIELD_LABELS: Record<string, string> = {
   net_amount: 'Base imponible',
   vat: 'IVA',
   total: 'Total',
+  amount: 'Importe',
+  description: 'Descripción',
 }
 
 /** Error devuelto por la API, con su mensaje en español y su código. */

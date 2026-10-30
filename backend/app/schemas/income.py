@@ -7,12 +7,12 @@ from app.schemas.pagination import PageParams
 
 
 class IncomeCreate(BaseModel):
-    """Datos de entrada para registrar un ingreso. Fecha e importe son obligatorios."""
+    """Datos de entrada para registrar un ingreso. Solo la descripción es opcional."""
 
     date: dt.date
     amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    vehicle_id: int
     description: str | None = Field(default=None, min_length=1, max_length=255)
-    vehicle_id: int | None = None
 
 
 class IncomeUpdate(IncomeCreate):

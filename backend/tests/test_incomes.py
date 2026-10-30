@@ -6,21 +6,30 @@ VEHICLES_URL = "/api/v1/vehicles"
 INCOME = {"date": "2026-10-20", "amount": "185.50", "description": "Recaudación del día"}
 
 
-def create_vehicle(client: TestClient, headers: dict[str, str]) -> int:
+def create_vehicle(client: TestClient, headers: dict[str, str], plate: str = "1234ABC") -> int:
     """Crea un vehículo y devuelve su id."""
-    vehicle = {"plate": "1234ABC", "brand": "Toyota", "model": "Prius"}
+    vehicle = {"plate": plate, "brand": "Toyota", "model": "Prius"}
     return client.post(VEHICLES_URL, json=vehicle, headers=headers).json()["id"]
 
 
+def with_vehicle(client: TestClient, headers: dict[str, str]) -> dict[str, object]:
+    """Datos de un ingreso válido, con un vehículo del usuario (lo crea si no tiene)."""
+    vehicles = client.get(VEHICLES_URL, headers=headers).json()
+    vehicle_id = vehicles[0]["id"] if vehicles else create_vehicle(client, headers)
+    return {**INCOME, "vehicle_id": vehicle_id}
+
+
 def test_create_income_returns_it(client: TestClient, auth_headers: dict[str, str]) -> None:
-    response = client.post(INCOMES_URL, json=INCOME, headers=auth_headers)
+    response = client.post(
+        INCOMES_URL, json=with_vehicle(client, auth_headers), headers=auth_headers
+    )
 
     assert response.status_code == 201
     body = response.json()
     assert body["date"] == "2026-10-20"
     assert body["amount"] == "185.50"
     assert body["description"] == "Recaudación del día"
-    assert body["vehicle_id"] is None
+    assert body["vehicle_id"] is not None
     assert "id" in body
 
 
@@ -28,7 +37,9 @@ def test_create_income_without_description(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
     response = client.post(
-        INCOMES_URL, json={"date": "2026-10-20", "amount": "90"}, headers=auth_headers
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "description": None},
+        headers=auth_headers,
     )
 
     assert response.status_code == 201
@@ -63,7 +74,8 @@ def test_create_income_with_vehicle_of_another_user_returns_404(
 def test_create_income_requires_date_and_amount(
     client: TestClient, auth_headers: dict[str, str], field: str
 ) -> None:
-    data = {key: value for key, value in INCOME.items() if key != field}
+    data = with_vehicle(client, auth_headers)
+    del data[field]
 
     response = client.post(INCOMES_URL, json=data, headers=auth_headers)
 
@@ -75,7 +87,11 @@ def test_create_income_requires_date_and_amount(
 def test_create_income_rejects_amount_not_greater_than_zero(
     client: TestClient, auth_headers: dict[str, str], amount: str
 ) -> None:
-    response = client.post(INCOMES_URL, json={**INCOME, "amount": amount}, headers=auth_headers)
+    response = client.post(
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "amount": amount},
+        headers=auth_headers,
+    )
 
     assert response.status_code == 422
     assert response.json()["detail"] == "amount: debe ser mayor que 0"
@@ -84,7 +100,11 @@ def test_create_income_rejects_amount_not_greater_than_zero(
 def test_create_income_rejects_more_than_two_decimals(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
-    response = client.post(INCOMES_URL, json={**INCOME, "amount": "10.555"}, headers=auth_headers)
+    response = client.post(
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "amount": "10.555"},
+        headers=auth_headers,
+    )
 
     assert response.status_code == 422
     assert response.json()["detail"] == "amount: debe tener como máximo 2 decimales"
@@ -95,7 +115,9 @@ def test_create_income_rejects_invalid_description(
     client: TestClient, auth_headers: dict[str, str], description: str
 ) -> None:
     response = client.post(
-        INCOMES_URL, json={**INCOME, "description": description}, headers=auth_headers
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "description": description},
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -106,10 +128,32 @@ def test_create_income_accepts_description_of_max_length(
     client: TestClient, auth_headers: dict[str, str]
 ) -> None:
     response = client.post(
-        INCOMES_URL, json={**INCOME, "description": "x" * 255}, headers=auth_headers
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "description": "x" * 255},
+        headers=auth_headers,
     )
 
     assert response.status_code == 201
+
+
+@pytest.mark.parametrize("vehicle", [{}, {"vehicle_id": None}])
+def test_create_income_requires_vehicle(
+    client: TestClient, auth_headers: dict[str, str], vehicle: dict[str, object]
+) -> None:
+    response = client.post(INCOMES_URL, json={**INCOME, **vehicle}, headers=auth_headers)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
+    assert response.json()["detail"].startswith("vehicle_id:")
+
+
+def test_update_requires_vehicle(client: TestClient, auth_headers: dict[str, str]) -> None:
+    income_id = create_income(client, auth_headers)
+
+    response = client.put(f"{INCOMES_URL}/{income_id}", json=INCOME, headers=auth_headers)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "vehicle_id: es obligatorio"
 
 
 def test_create_income_requires_authentication(client: TestClient) -> None:
@@ -124,7 +168,8 @@ def test_create_income_requires_authentication(client: TestClient) -> None:
 
 def create_income(client: TestClient, headers: dict[str, str], **fields: object) -> int:
     """Crea un ingreso (con los datos de INCOME y los indicados) y devuelve su id."""
-    return client.post(INCOMES_URL, json={**INCOME, **fields}, headers=headers).json()["id"]
+    income = {**with_vehicle(client, headers), **fields}
+    return client.post(INCOMES_URL, json=income, headers=headers).json()["id"]
 
 
 def listed_ids(client: TestClient, headers: dict[str, str], query: str = "") -> list[int]:
@@ -184,10 +229,11 @@ def test_list_filters_by_date_range_inclusive(
 
 def test_list_filters_by_vehicle(client: TestClient, auth_headers: dict[str, str]) -> None:
     vehicle_id = create_vehicle(client, auth_headers)
-    with_vehicle = create_income(client, auth_headers, vehicle_id=vehicle_id)
-    create_income(client, auth_headers)
+    other_vehicle = create_vehicle(client, auth_headers, plate="9999ZZZ")
+    expected = create_income(client, auth_headers, vehicle_id=vehicle_id)
+    create_income(client, auth_headers, vehicle_id=other_vehicle)
 
-    assert listed_ids(client, auth_headers, f"?vehicle_id={vehicle_id}") == [with_vehicle]
+    assert listed_ids(client, auth_headers, f"?vehicle_id={vehicle_id}") == [expected]
 
 
 def test_list_with_vehicle_of_another_user_returns_nothing(
@@ -228,7 +274,8 @@ def test_list_requires_authentication(client: TestClient) -> None:
 
 def test_update_replaces_income_data(client: TestClient, auth_headers: dict[str, str]) -> None:
     income_id = create_income(client, auth_headers)
-    new_data = {"date": "2026-10-21", "amount": "200.00"}
+    new_data = {**with_vehicle(client, auth_headers), "date": "2026-10-21", "amount": "200.00"}
+    del new_data["description"]
 
     response = client.put(f"{INCOMES_URL}/{income_id}", json=new_data, headers=auth_headers)
 
@@ -243,7 +290,9 @@ def test_update_validates_like_creation(client: TestClient, auth_headers: dict[s
     income_id = create_income(client, auth_headers)
 
     response = client.put(
-        f"{INCOMES_URL}/{income_id}", json={**INCOME, "amount": "0"}, headers=auth_headers
+        f"{INCOMES_URL}/{income_id}",
+        json={**with_vehicle(client, auth_headers), "amount": "0"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 422
@@ -283,7 +332,8 @@ def test_income_of_another_user_returns_404_and_is_untouched(
     method: str,
 ) -> None:
     income_id = create_income(client, auth_headers)
-    body = {"json": {**INCOME, "amount": "1.00"}} if method == "put" else {}
+    data = {**with_vehicle(client, other_auth_headers), "amount": "1.00"}
+    body = {"json": data} if method == "put" else {}
 
     response = client.request(
         method, f"{INCOMES_URL}/{income_id}", headers=other_auth_headers, **body
@@ -299,7 +349,7 @@ def test_income_of_another_user_returns_404_and_is_untouched(
 def test_unknown_income_returns_404(
     client: TestClient, auth_headers: dict[str, str], method: str
 ) -> None:
-    body = {"json": INCOME} if method == "put" else {}
+    body = {"json": with_vehicle(client, auth_headers)} if method == "put" else {}
 
     response = client.request(method, f"{INCOMES_URL}/999999", headers=auth_headers, **body)
 

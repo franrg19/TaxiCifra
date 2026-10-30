@@ -45,7 +45,10 @@ def add_income(
     day: str = "2026-10-15",
     vehicle_id: int | None = None,
 ) -> None:
-    """Registra un ingreso."""
+    """Registra un ingreso. Sin vehículo indicado, usa el primero del usuario (o crea uno)."""
+    if vehicle_id is None:
+        vehicles = client.get(VEHICLES_URL, headers=headers).json()
+        vehicle_id = vehicles[0]["id"] if vehicles else create_vehicle(client, headers)
     income = {"date": day, "amount": amount, "vehicle_id": vehicle_id}
     client.post(INCOMES_URL, json=income, headers=headers)
 
@@ -129,8 +132,9 @@ def test_summary_filters_by_vehicle(client: TestClient, auth_headers: dict[str, 
     vehicle_id = create_vehicle(client, auth_headers)
     add_ticket(client, auth_headers, "40.00", vehicle_id=vehicle_id)
     add_ticket(client, auth_headers, "10.00")
+    other_vehicle = create_vehicle(client, auth_headers, "9999ZZZ")
     add_income(client, auth_headers, "100.00", vehicle_id=vehicle_id)
-    add_income(client, auth_headers, "60.00")
+    add_income(client, auth_headers, "60.00", vehicle_id=other_vehicle)
 
     body = summary(client, auth_headers, f"?vehicle_id={vehicle_id}")
 
@@ -399,8 +403,9 @@ def test_monthly_uses_current_year_by_default(
 
 def test_monthly_filters_by_vehicle(client: TestClient, auth_headers: dict[str, str]) -> None:
     vehicle_id = create_vehicle(client, auth_headers)
+    other_vehicle = create_vehicle(client, auth_headers, "9999ZZZ")
     add_income(client, auth_headers, "100.00", day="2026-10-15", vehicle_id=vehicle_id)
-    add_income(client, auth_headers, "60.00", day="2026-10-15")
+    add_income(client, auth_headers, "60.00", day="2026-10-15", vehicle_id=other_vehicle)
 
     months = monthly(client, auth_headers, f"?year=2026&vehicle_id={vehicle_id}")
 
