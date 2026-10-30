@@ -8,6 +8,9 @@ const FIELD_LABELS: Record<string, string> = {
   name: 'Nombre',
   email: 'Email',
   password: 'Contraseña',
+  plate: 'Matrícula',
+  brand: 'Marca',
+  model: 'Modelo',
 }
 
 /** Error devuelto por la API, con su mensaje en español y su código. */

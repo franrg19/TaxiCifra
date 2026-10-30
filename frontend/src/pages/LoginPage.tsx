@@ -4,6 +4,7 @@ import { login as apiLogin } from '../api/auth'
 import { errorMessage } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { AuthCard } from '../components/AuthCard'
+import { Button } from '../components/Button'
 import { FormField } from '../components/FormField'
 
 export function LoginPage() {
@@ -54,13 +55,9 @@ export function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-amber-400 px-4 py-2 font-semibold hover:bg-amber-500 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? 'Entrando…' : 'Entrar'}
-        </button>
+        </Button>
       </form>
       <p className="mt-4 text-center text-sm text-slate-600">
         ¿No tienes cuenta?{' '}
