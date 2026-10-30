@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { AuthProvider } from './auth/AuthProvider'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
-import { HomePage } from './pages/HomePage'
+import { DashboardPage } from './pages/DashboardPage'
 import { IncomesPage } from './pages/IncomesPage'
 import { LoginPage } from './pages/LoginPage'
 import { OdometerPage } from './pages/OdometerPage'
@@ -22,7 +22,7 @@ export default function App() {
             <Route path="/register" element={<RegisterPage />} />
             {/* Todo lo que está aquí dentro exige sesión iniciada */}
             <Route element={<RequireAuth />}>
-              <Route index element={<HomePage />} />
+              <Route index element={<DashboardPage />} />
               <Route path="/tickets" element={<TicketsPage />} />
               <Route path="/tickets/:ticketId" element={<TicketReviewPage />} />
               <Route path="/incomes" element={<IncomesPage />} />
