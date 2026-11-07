@@ -76,17 +76,25 @@ export interface Ticket extends TicketInput {
   created_at: string
 }
 
+export type PaymentMethod = 'card' | 'cash'
+
 export interface IncomeInput {
   date: string
   amount: string
+  payment_method: PaymentMethod
   description: string | null
   vehicle_id: number
 }
 
-export interface Income extends Omit<IncomeInput, 'vehicle_id'> {
+export interface Income extends Omit<
+  IncomeInput,
+  'vehicle_id' | 'payment_method'
+> {
   id: number
   // Queda vacío si el vehículo se borró conservando sus ingresos
   vehicle_id: number | null
+  // Vacía en los ingresos registrados antes de existir este campo
+  payment_method: PaymentMethod | null
   created_at: string
 }
 
@@ -104,6 +112,9 @@ export interface OdometerReading extends OdometerReadingInput {
 export interface DashboardSummary {
   expenses: string
   incomes: string
+  // Desglose de los ingresos; los que no tienen forma de pago no están en ninguno
+  card_incomes: string
+  cash_incomes: string
   profit: string
   ticket_count: number
   // null significa "sin datos": no hay dos lecturas de km en el periodo

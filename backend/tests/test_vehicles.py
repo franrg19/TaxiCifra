@@ -237,7 +237,12 @@ def test_force_delete_works_for_vehicle_without_tickets(
 
 def create_income_for_vehicle(client: TestClient, headers: dict[str, str], vehicle_id: int) -> int:
     """Crea un ingreso asociado al vehículo y devuelve su id."""
-    income = {"date": "2026-10-20", "amount": "100.00", "vehicle_id": vehicle_id}
+    income = {
+        "date": "2026-10-20",
+        "amount": "100.00",
+        "payment_method": "cash",
+        "vehicle_id": vehicle_id,
+    }
     return client.post(INCOMES_URL, json=income, headers=headers).json()["id"]
 
 

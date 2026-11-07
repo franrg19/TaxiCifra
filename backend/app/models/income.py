@@ -1,10 +1,18 @@
 import datetime as dt
 from decimal import Decimal
+from enum import StrEnum
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
+
+
+class PaymentMethod(StrEnum):
+    """Formas de cobro de un ingreso."""
+
+    CARD = "card"
+    CASH = "cash"
 
 
 class Income(Base):
@@ -18,6 +26,8 @@ class Income(Base):
     vehicle_id: Mapped[int | None] = mapped_column(ForeignKey("vehicles.id", ondelete="SET NULL"))
     date: Mapped[dt.date] = mapped_column(Date)
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # Obligatoria al crear y editar; null solo en los ingresos anteriores a este campo
+    payment_method: Mapped[str | None] = mapped_column(String(10))
     description: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

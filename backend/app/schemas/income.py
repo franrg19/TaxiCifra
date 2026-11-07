@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models import PaymentMethod
 from app.schemas.pagination import PageParams
 
 
@@ -11,6 +12,7 @@ class IncomeCreate(BaseModel):
 
     date: dt.date
     amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    payment_method: PaymentMethod
     vehicle_id: int
     description: str | None = Field(default=None, min_length=1, max_length=255)
 
@@ -25,6 +27,7 @@ class IncomeFilters(PageParams):
     date_from: dt.date | None = None
     date_to: dt.date | None = None
     vehicle_id: int | None = None
+    payment_method: PaymentMethod | None = None
 
 
 class IncomeRead(BaseModel):
@@ -36,5 +39,7 @@ class IncomeRead(BaseModel):
     vehicle_id: int | None
     date: dt.date
     amount: Decimal
+    # None = ingreso registrado antes de existir este campo ("Sin indicar")
+    payment_method: PaymentMethod | None
     description: str | None
     created_at: dt.datetime

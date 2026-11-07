@@ -19,6 +19,9 @@ class DashboardSummary(BaseModel):
 
     expenses: Decimal
     incomes: Decimal
+    # Desglose de los ingresos; los que no tienen forma de pago no están en ninguno
+    card_incomes: Decimal
+    cash_incomes: Decimal
     profit: Decimal
     ticket_count: int
     # None = "sin datos": no hay ningún vehículo con al menos dos lecturas en el periodo

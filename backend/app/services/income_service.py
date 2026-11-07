@@ -38,6 +38,8 @@ def list_incomes(db: Session, user_id: int, filters: IncomeFilters) -> tuple[Seq
         conditions.append(Income.date <= filters.date_to)
     if filters.vehicle_id is not None:
         conditions.append(Income.vehicle_id == filters.vehicle_id)
+    if filters.payment_method is not None:
+        conditions.append(Income.payment_method == filters.payment_method)
 
     total = db.scalar(select(func.count()).select_from(Income).where(*conditions)) or 0
     query = (

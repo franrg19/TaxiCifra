@@ -1,3 +1,4 @@
+import { PAYMENT_METHOD_LABELS } from '../api/incomes'
 import type { Vehicle } from '../types/api'
 import { Button } from './Button'
 import { FormField } from './FormField'
@@ -18,7 +19,7 @@ export function IncomeFilters({
   onClear,
 }: IncomeFiltersProps) {
   return (
-    <form className="grid gap-4 rounded-lg bg-white p-4 shadow sm:grid-cols-2 lg:grid-cols-4">
+    <form className="grid gap-4 rounded-lg bg-white p-4 shadow sm:grid-cols-2 lg:grid-cols-5">
       <FormField
         id="date_from"
         label="Desde"
@@ -43,6 +44,19 @@ export function IncomeFilters({
         {vehicles.map((vehicle) => (
           <option key={vehicle.id} value={vehicle.id}>
             {vehicle.plate}
+          </option>
+        ))}
+      </SelectField>
+      <SelectField
+        id="payment_method"
+        label="Forma de pago"
+        value={values.get('payment_method') ?? ''}
+        onChange={(event) => onChange('payment_method', event.target.value)}
+      >
+        <option value="">Todas</option>
+        {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
           </option>
         ))}
       </SelectField>
