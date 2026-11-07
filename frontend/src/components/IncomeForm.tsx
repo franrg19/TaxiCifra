@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { errorMessage } from '../api/client'
+import { PAYMENT_METHOD_LABELS } from '../api/incomes'
 import { AMOUNT_PATTERN, amountToInput, inputToAmount, today } from '../format'
-import type { Income, IncomeInput, Vehicle } from '../types/api'
+import type { Income, IncomeInput, PaymentMethod, Vehicle } from '../types/api'
 import { Button } from './Button'
 import { ErrorMessage } from './ErrorMessage'
 import { FormField } from './FormField'
@@ -26,6 +27,10 @@ export function IncomeForm({
   // Lo habitual es apuntar la recaudación del día: la fecha viene rellena con hoy
   const [date, setDate] = useState(income?.date ?? today())
   const [amount, setAmount] = useState(amountToInput(income?.amount ?? null))
+  // Sin valor inicial: el usuario la elige siempre (los ingresos antiguos no la tienen)
+  const [paymentMethod, setPaymentMethod] = useState(
+    income?.payment_method ?? '',
+  )
   const [description, setDescription] = useState(income?.description ?? '')
   const [chosenVehicle, setChosenVehicle] = useState(
     String(income?.vehicle_id ?? ''),
@@ -45,6 +50,8 @@ export function IncomeForm({
       await onSubmit({
         date,
         amount: inputToAmount(amount) ?? '',
+        // El desplegable es obligatorio: al enviar ya no puede estar vacío
+        payment_method: paymentMethod as PaymentMethod,
         description: description.trim() || null,
         vehicle_id: Number(vehicleId),
       })
@@ -72,7 +79,7 @@ export function IncomeForm({
           .
         </p>
       )}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <FormField
           id="date"
           label="Fecha"
@@ -91,6 +98,20 @@ export function IncomeForm({
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
         />
+        <SelectField
+          id="payment_method"
+          label="Forma de pago"
+          required
+          value={paymentMethod}
+          onChange={(event) => setPaymentMethod(event.target.value)}
+        >
+          <option value="">Elige una forma de pago</option>
+          {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </SelectField>
         <SelectField
           id="vehicle"
           label="Vehículo"

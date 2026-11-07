@@ -5,6 +5,7 @@ import {
   createIncome,
   deleteIncome,
   listIncomes,
+  PAYMENT_METHOD_LABELS,
   updateIncome,
 } from '../api/incomes'
 import { listVehicles } from '../api/vehicles'
@@ -178,6 +179,10 @@ export function IncomesPage() {
                   <p className="font-semibold">{formatEuros(income.amount)}</p>
                   <p className="text-sm text-slate-600">
                     {formatDate(income.date)}
+                    {' · '}
+                    {income.payment_method
+                      ? PAYMENT_METHOD_LABELS[income.payment_method]
+                      : 'Forma de pago sin indicar'}
                     {income.vehicle_id !== null &&
                       plates.has(income.vehicle_id) &&
                       ` · ${plates.get(income.vehicle_id)}`}
