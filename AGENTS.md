@@ -67,7 +67,7 @@ Informes PDF/Excel · recordatorios de mantenimiento · documentación del vehí
 
 **Librerías concretas ya aprobadas (backend):** `uvicorn` (servidor), `psycopg` (driver de PostgreSQL), `argon2-cffi` (hash), `PyJWT` (tokens), `email-validator` (validación de emails), `python-multipart` (subida de ficheros), `anthropic` (SDK del proveedor OCR/IA), `httpx` (cliente de los tests) y `ruff` (linter y formateo).
 
-**Librerías concretas ya aprobadas (frontend):** `react-router` (navegación), `tailwindcss` (estilos), `recharts` (gráficos del dashboard), `oxlint` (linter) y `prettier` (formateo). Las peticiones a la API se hacen con `fetch` nativo y estado de React, sin librerías de datos.
+**Librerías concretas ya aprobadas (frontend):** `react-router` (navegación), `tailwindcss` (estilos), `recharts` (gráficos del dashboard), `oxlint` (linter), `prettier` (formateo) y, solo para los tests del formulario de revisión, `vitest`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom` y `jsdom`. Las peticiones a la API se hacen con `fetch` nativo y estado de React, sin librerías de datos.
 
 ## 5. Arquitectura
 
