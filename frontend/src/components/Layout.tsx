@@ -5,7 +5,7 @@ import { useAuth } from '../auth/useAuth'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Resumen' },
-  { to: '/tickets', label: 'Tickets' },
+  { to: '/tickets', label: 'Gastos' },
   { to: '/incomes', label: 'Ingresos' },
   { to: '/odometer', label: 'Kilometraje' },
   { to: '/vehicles', label: 'Vehículos' },
