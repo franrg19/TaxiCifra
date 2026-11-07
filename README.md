@@ -98,6 +98,7 @@ Comandos del frontend (dentro de `frontend/`):
 ```bash
 npm run lint           # linter (oxlint)
 npm run format         # formatear con Prettier
+npm test               # tests del formulario de revisión (Vitest)
 npm run build          # comprobar tipos y generar la versión de producción
 ```
 

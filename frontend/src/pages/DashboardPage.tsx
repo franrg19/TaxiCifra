@@ -108,6 +108,20 @@ export function DashboardPage() {
     setSearchParams(next)
   }
 
+  function choosePeriod(from: string, to: string) {
+    const next = new URLSearchParams(searchParams)
+    next.set('date_from', from)
+    next.set('date_to', to)
+    setSearchParams(next)
+  }
+
+  // Una fecha vacía significa "sin límite": "Todo" muestra el histórico completo
+  const periods = [
+    { label: 'Este mes', from: firstDayOfMonth(), to: today() },
+    { label: 'Este año', from: `${currentYear}-01-01`, to: today() },
+    { label: 'Todo', from: '', to: '' },
+  ]
+
   const years = Array.from(
     { length: YEARS_SHOWN },
     (_, index) => currentYear - index,
@@ -117,7 +131,26 @@ export function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Resumen</h1>
 
-      <form className="grid gap-4 rounded-lg bg-white p-4 shadow sm:grid-cols-2 lg:grid-cols-4">
+      <form className="grid gap-4 rounded-lg bg-white p-4 shadow sm:grid-cols-3">
+        <div
+          role="group"
+          aria-label="Periodo"
+          className="flex flex-wrap gap-2 sm:col-span-3"
+        >
+          {periods.map(({ label, from, to }) => {
+            const active = dateFrom === from && dateTo === to
+            return (
+              <Button
+                key={label}
+                variant={active ? 'primary' : 'secondary'}
+                aria-pressed={active}
+                onClick={() => choosePeriod(from, to)}
+              >
+                {label}
+              </Button>
+            )
+          })}
+        </div>
         <FormField
           id="date_from"
           label="Desde"
@@ -145,15 +178,6 @@ export function DashboardPage() {
             </option>
           ))}
         </SelectField>
-        <div className="flex items-end">
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={() => setSearchParams({})}
-          >
-            Este mes
-          </Button>
-        </div>
       </form>
 
       <ErrorMessage message={period?.error ?? null} />
