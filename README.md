@@ -117,6 +117,15 @@ docker compose exec backend pytest
 
 Los tests se ejecutan dentro del contenedor contra una base de datos PostgreSQL aparte (`<POSTGRES_DB>_test`), que se crea automáticamente. Cada test se deshace al terminar, así que no dejan datos ni tocan la base de datos de desarrollo.
 
+### Integración continua
+
+En cada push y cada Pull Request, GitHub Actions (`.github/workflows/ci.yml`) ejecuta dos trabajos en paralelo:
+
+- **Backend:** ruff (linter y formateo), migraciones de Alembic, pytest contra un PostgreSQL temporal y build de la imagen Docker.
+- **Frontend:** oxlint, Prettier, Vitest y build.
+
+El CI no usa ninguna clave real: sin `ANTHROPIC_API_KEY`, el backend usa el OCR simulado.
+
 ## Estructura del backend
 
 ```text
