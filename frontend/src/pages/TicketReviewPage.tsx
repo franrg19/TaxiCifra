@@ -67,7 +67,7 @@ export function TicketReviewPage() {
             to="/tickets"
             className="text-sm font-medium text-amber-700 hover:underline"
           >
-            ← Volver a tickets
+            ← Volver a gastos
           </Link>
           <h1 className="text-2xl font-semibold">Revisar ticket</h1>
         </div>
