@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import logo from '../assets/logo-yellow-background.png'
 import { useAuth } from '../auth/useAuth'
 
@@ -42,7 +42,15 @@ export function Layout() {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="bg-amber-400 shadow">
         <div className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-1">
-          <img src={logo} alt="Taxicifra" className="h-16 w-auto" />
+          {/* Como en casi todas las webs, el logo lleva a la pantalla principal */}
+          <Link
+            to="/"
+            aria-label="Taxicifra: ir al resumen"
+            onClick={() => setMenuOpen(false)}
+            className="shrink-0"
+          >
+            <img src={logo} alt="" className="h-16 w-auto" />
+          </Link>
           {isAuthenticated && (
             <>
               {/* Escritorio: menú en línea */}
