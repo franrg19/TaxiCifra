@@ -4,7 +4,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from app.models import Income, OdometerReading, Ticket, TicketStatus
+from app.models import Income, OdometerReading, PaymentMethod, Ticket, TicketStatus
 from app.schemas.dashboard import (
     CategoryExpense,
     DashboardFilters,
@@ -22,12 +22,14 @@ COST_PER_KM_PRECISION = Decimal("0.001")
 def get_summary(db: Session, user_id: int, filters: DashboardFilters) -> DashboardSummary:
     """Calcula gastos, ingresos, beneficio, tickets, km y coste por km del periodo."""
     expenses, ticket_count = _expenses_and_ticket_count(db, user_id, filters)
-    incomes = _incomes(db, user_id, filters)
+    incomes, card_incomes, cash_incomes = _incomes(db, user_id, filters)
     km_driven = _km_driven(db, user_id, filters)
 
     return DashboardSummary(
         expenses=expenses,
         incomes=incomes,
+        card_incomes=card_incomes,
+        cash_incomes=cash_incomes,
         profit=incomes - expenses,
         ticket_count=ticket_count,
         km_driven=km_driven,
@@ -120,12 +122,23 @@ def _expenses_and_ticket_count(
     return Decimal(total).quantize(CENTS), count
 
 
-def _incomes(db: Session, user_id: int, filters: DashboardFilters) -> Decimal:
-    """Suma de los ingresos del periodo."""
-    query = select(func.coalesce(func.sum(Income.amount), 0)).where(
-        *_conditions(Income, user_id, filters)
-    )
-    return Decimal(db.scalar(query)).quantize(CENTS)
+def _incomes(
+    db: Session, user_id: int, filters: DashboardFilters
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Ingresos del periodo: total, cobrados con tarjeta y en efectivo, en una sola consulta.
+
+    Los ingresos sin forma de pago (anteriores a ese campo) cuentan en el total, pero en
+    ningún desglose.
+    """
+    amount = func.sum(Income.amount)
+    # SUM(amount) FILTER (WHERE ...) suma solo las filas que cumplen la condición
+    query = select(
+        func.coalesce(amount, 0),
+        func.coalesce(amount.filter(Income.payment_method == PaymentMethod.CARD), 0),
+        func.coalesce(amount.filter(Income.payment_method == PaymentMethod.CASH), 0),
+    ).where(*_conditions(Income, user_id, filters))
+    incomes, card, cash = (Decimal(total).quantize(CENTS) for total in db.execute(query).one())
+    return incomes, card, cash
 
 
 def _km_driven(db: Session, user_id: int, filters: DashboardFilters) -> int | None:

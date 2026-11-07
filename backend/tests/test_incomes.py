@@ -1,9 +1,21 @@
+import datetime as dt
+from decimal import Decimal
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Income, User
 
 INCOMES_URL = "/api/v1/incomes"
 VEHICLES_URL = "/api/v1/vehicles"
-INCOME = {"date": "2026-10-20", "amount": "185.50", "description": "Recaudación del día"}
+INCOME = {
+    "date": "2026-10-20",
+    "amount": "185.50",
+    "payment_method": "card",
+    "description": "Recaudación del día",
+}
 
 
 def create_vehicle(client: TestClient, headers: dict[str, str], plate: str = "1234ABC") -> int:
@@ -29,6 +41,7 @@ def test_create_income_returns_it(client: TestClient, auth_headers: dict[str, st
     assert body["date"] == "2026-10-20"
     assert body["amount"] == "185.50"
     assert body["description"] == "Recaudación del día"
+    assert body["payment_method"] == "card"
     assert body["vehicle_id"] is not None
     assert "id" in body
 
@@ -70,8 +83,8 @@ def test_create_income_with_vehicle_of_another_user_returns_404(
     assert response.json()["code"] == "vehicle_not_found"
 
 
-@pytest.mark.parametrize("field", ["date", "amount"])
-def test_create_income_requires_date_and_amount(
+@pytest.mark.parametrize("field", ["date", "amount", "payment_method"])
+def test_create_income_requires_date_amount_and_payment_method(
     client: TestClient, auth_headers: dict[str, str], field: str
 ) -> None:
     data = with_vehicle(client, auth_headers)
@@ -134,6 +147,19 @@ def test_create_income_accepts_description_of_max_length(
     )
 
     assert response.status_code == 201
+
+
+def test_create_income_rejects_unknown_payment_method(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    response = client.post(
+        INCOMES_URL,
+        json={**with_vehicle(client, auth_headers), "payment_method": "bizum"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "payment_method: valor no permitido"
 
 
 @pytest.mark.parametrize("vehicle", [{}, {"vehicle_id": None}])
@@ -236,6 +262,27 @@ def test_list_filters_by_vehicle(client: TestClient, auth_headers: dict[str, str
     assert listed_ids(client, auth_headers, f"?vehicle_id={vehicle_id}") == [expected]
 
 
+def test_list_filters_by_payment_method(client: TestClient, auth_headers: dict[str, str]) -> None:
+    card = create_income(client, auth_headers, payment_method="card")
+    cash = create_income(client, auth_headers, payment_method="cash")
+
+    assert listed_ids(client, auth_headers, "?payment_method=card") == [card]
+    assert listed_ids(client, auth_headers, "?payment_method=cash") == [cash]
+
+
+def test_list_shows_old_income_without_payment_method(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    """Los ingresos anteriores a la forma de pago se listan con payment_method = null."""
+    user = db.scalars(select(User).where(User.email == "ana@example.com")).one()
+    db.add(Income(user_id=user.id, date=dt.date(2026, 10, 1), amount=Decimal("50.00")))
+    db.flush()
+
+    response = client.get(INCOMES_URL, headers=auth_headers)
+
+    assert response.json()["items"][0]["payment_method"] is None
+
+
 def test_list_with_vehicle_of_another_user_returns_nothing(
     client: TestClient, auth_headers: dict[str, str], other_auth_headers: dict[str, str]
 ) -> None:
@@ -251,6 +298,7 @@ def test_list_with_vehicle_of_another_user_returns_nothing(
         ("?size=101", "size: debe ser menor o igual que 100"),
         ("?page=0", "page: debe ser mayor o igual que 1"),
         ("?date_to=31/10/2026", "date_to: debe ser una fecha con formato AAAA-MM-DD"),
+        ("?payment_method=bizum", "payment_method: valor no permitido"),
     ],
 )
 def test_list_rejects_invalid_parameters(
@@ -284,6 +332,19 @@ def test_update_replaces_income_data(client: TestClient, auth_headers: dict[str,
     assert body["date"] == "2026-10-21"
     assert body["amount"] == "200.00"
     assert body["description"] is None
+
+
+def test_update_changes_payment_method(client: TestClient, auth_headers: dict[str, str]) -> None:
+    income_id = create_income(client, auth_headers, payment_method="card")
+
+    response = client.put(
+        f"{INCOMES_URL}/{income_id}",
+        json={**with_vehicle(client, auth_headers), "payment_method": "cash"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["payment_method"] == "cash"
 
 
 def test_update_validates_like_creation(client: TestClient, auth_headers: dict[str, str]) -> None:

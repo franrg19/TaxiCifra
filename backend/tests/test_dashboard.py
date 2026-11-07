@@ -1,7 +1,12 @@
 import datetime as dt
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import Income, User
 
 SUMMARY_URL = "/api/v1/dashboard/summary"
 TICKETS_URL = "/api/v1/tickets"
@@ -44,12 +49,18 @@ def add_income(
     amount: str,
     day: str = "2026-10-15",
     vehicle_id: int | None = None,
+    payment_method: str = "cash",
 ) -> None:
     """Registra un ingreso. Sin vehículo indicado, usa el primero del usuario (o crea uno)."""
     if vehicle_id is None:
         vehicles = client.get(VEHICLES_URL, headers=headers).json()
         vehicle_id = vehicles[0]["id"] if vehicles else create_vehicle(client, headers)
-    income = {"date": day, "amount": amount, "vehicle_id": vehicle_id}
+    income = {
+        "date": day,
+        "amount": amount,
+        "payment_method": payment_method,
+        "vehicle_id": vehicle_id,
+    }
     client.post(INCOMES_URL, json=income, headers=headers)
 
 
@@ -74,6 +85,8 @@ def test_summary_without_data_returns_zeros_and_no_km_data(
     assert summary(client, auth_headers) == {
         "expenses": "0.00",
         "incomes": "0.00",
+        "card_incomes": "0.00",
+        "cash_incomes": "0.00",
         "profit": "0.00",
         "ticket_count": 0,
         "km_driven": None,
@@ -105,6 +118,35 @@ def test_summary_profit_is_incomes_minus_expenses(
 
     assert body["incomes"] == "200.50"
     assert body["profit"] == "120.25"
+
+
+def test_summary_splits_incomes_by_payment_method(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    add_income(client, auth_headers, "120.00", payment_method="card")
+    add_income(client, auth_headers, "30.50", payment_method="card")
+    add_income(client, auth_headers, "80.00", payment_method="cash")
+
+    body = summary(client, auth_headers)
+
+    assert body["incomes"] == "230.50"
+    assert body["card_incomes"] == "150.50"
+    assert body["cash_incomes"] == "80.00"
+
+
+def test_summary_counts_old_income_without_payment_method_only_in_total(
+    client: TestClient, auth_headers: dict[str, str], db: Session
+) -> None:
+    add_income(client, auth_headers, "100.00", payment_method="card")
+    user = db.scalars(select(User).where(User.email == "ana@example.com")).one()
+    db.add(Income(user_id=user.id, date=dt.date(2026, 10, 15), amount=Decimal("40.00")))
+    db.flush()
+
+    body = summary(client, auth_headers)
+
+    assert body["incomes"] == "140.00"
+    assert body["card_incomes"] == "100.00"
+    assert body["cash_incomes"] == "0.00"
 
 
 def test_summary_profit_can_be_negative(client: TestClient, auth_headers: dict[str, str]) -> None:
